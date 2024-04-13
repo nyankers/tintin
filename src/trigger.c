@@ -1319,6 +1319,7 @@ DO_COMMAND(do_call)
 {
 	struct listnode *node;
 	struct listroot *root;
+	char *tmp;
 	int i;
 
 	root = ses->list[LIST_PROCEDURE];
@@ -1328,7 +1329,8 @@ DO_COMMAND(do_call)
 		return FALSE;
 	}
 
-	arg = get_arg_in_braces(ses, arg, arg1, GET_ONE);
+	arg = sub_arg_in_braces(ses, arg, arg1, GET_ONE, SUB_VAR|SUB_FUN);
+	tmp = str_alloc_stack(0);
 
 	node = search_node_list(root, arg1);
 
@@ -1338,11 +1340,12 @@ DO_COMMAND(do_call)
 	}
 	else
 	{
-		RESTRING(gtd->vars[0], arg);
+		substitute(ses, arg, tmp, SUB_VAR|SUB_FUN);
+		RESTRING(gtd->vars[0], tmp);
 
 		for (i = 1 ; i < 100 ; i++)
 		{
-			if (*arg == 0)
+			if (*tmp == 0)
 			{
 				gtd->varc = i;
 
@@ -1353,7 +1356,7 @@ DO_COMMAND(do_call)
 				break;
 			}
 
-			arg = get_arg_in_braces(ses, arg, arg1, GET_ONE);
+			tmp = get_arg_in_braces(ses, tmp, arg1, GET_ONE);
 
 			RESTRING(gtd->vars[i], arg1);
 		}
@@ -1369,7 +1372,9 @@ DO_COMMAND(do_call)
 		}
 		else
 		{
-			substitute(ses, node->arg2, arg1, SUB_ARG);
+			substitute(ses, node->arg2, tmp, SUB_ARG);
+
+			substitute(ses, tmp, arg1, SUB_VAR|SUB_FUN|SUB_COL|SUB_ESC);
 			
 			script_driver(ses, LIST_PROCEDURE, arg1);
 		}
