@@ -25,7 +25,7 @@ DO_LUA(tt_ignore);
 DO_LUA(tt_macro);
 DO_LUA(tt_parse);
 DO_LUA(tt_parse_list);
-DO_LUA(tt_procedure);
+DO_LUA(tt_proc);
 DO_LUA(tt_prompt);
 DO_LUA(tt_quiet);
 DO_LUA(tt_read_all);
@@ -64,7 +64,7 @@ const luaL_Reg tt_api_reg[] = {
 	{ "macro", tt_macro },
 	{ "parse", tt_parse },
 	{ "parse_list", tt_parse_list },
-	{ "procedure", tt_procedure },
+	{ "proc", tt_proc },
 	{ "prompt", tt_prompt },
 	{ "quiet", tt_quiet },
 	{ "read_all", tt_read_all },
@@ -1215,7 +1215,7 @@ DO_LUA(tt_macro)
 	return 0;
 }
 
-DO_LUA(tt_procedure)
+DO_LUA(tt_proc)
 {
 	struct listroot *root;
 	struct listnode *node;
