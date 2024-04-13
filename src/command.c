@@ -212,6 +212,7 @@ extern DO_COMMAND(do_alias);
 extern DO_COMMAND(do_all);
 extern DO_COMMAND(do_bell);
 extern DO_COMMAND(do_button);
+extern DO_COMMAND(do_call);
 extern DO_COMMAND(do_cat);
 extern DO_COMMAND(do_class);
 extern DO_COMMAND(do_commands);
@@ -228,11 +229,13 @@ extern DO_COMMAND(do_killall);
 extern DO_COMMAND(do_log);
 extern DO_COMMAND(do_local);
 extern DO_COMMAND(do_list);
+extern DO_COMMAND(do_lua);
 extern DO_COMMAND(do_macro);
 extern DO_COMMAND(do_math);
 extern DO_COMMAND(do_message);
 extern DO_COMMAND(do_path);
 extern DO_COMMAND(do_port);
+extern DO_COMMAND(do_procedure);
 extern DO_COMMAND(do_prompt);
 extern DO_COMMAND(do_run);
 extern DO_COMMAND(do_scan);
@@ -256,6 +259,7 @@ extern DO_COMMAND(do_unhighlight);
 extern DO_COMMAND(do_unlocal);
 extern DO_COMMAND(do_unmacro);
 extern DO_COMMAND(do_unpathdir);
+extern DO_COMMAND(do_unprocedure);
 extern DO_COMMAND(do_unprompt);
 extern DO_COMMAND(do_unsubstitute);
 extern DO_COMMAND(do_untab);
@@ -273,6 +277,7 @@ struct command_type command_table[] =
 	{    "break",             do_nop,               0, TOKEN_TYPE_BREAK   },
 	{    "buffer",            do_buffer,            2, TOKEN_TYPE_COMMAND },
 	{    "button",            do_button,            3, TOKEN_TYPE_COMMAND },
+	{    "call",              do_call,              1, TOKEN_TYPE_COMMAND },
 	{    "case",              do_nop,               0, TOKEN_TYPE_CASE    },
 	{    "cat",               do_cat,               1, TOKEN_TYPE_COMMAND },
 	{    "chat",              do_chat,              2, TOKEN_TYPE_COMMAND },
@@ -312,6 +317,7 @@ struct command_type command_table[] =
 	{    "local",             do_local,             1, TOKEN_TYPE_COMMAND },
 	{    "log",               do_log,               2, TOKEN_TYPE_COMMAND },
 	{    "loop",              do_nop,               3, TOKEN_TYPE_LOOP    },
+	{    "lua",               do_lua,               2, TOKEN_TYPE_COMMAND },
 	{    "macro",             do_macro,             3, TOKEN_TYPE_COMMAND },
 	{    "map",               do_map,               3, TOKEN_TYPE_COMMAND },
 	{    "math",              do_math,              2, TOKEN_TYPE_COMMAND },
@@ -321,6 +327,7 @@ struct command_type command_table[] =
 	{    "path",              do_path,              1, TOKEN_TYPE_COMMAND },
 	{    "pathdir",           do_pathdir,           3, TOKEN_TYPE_COMMAND },
 	{    "port",              do_port,              2, TOKEN_TYPE_COMMAND },
+	{    "procedure",         do_procedure,         2, TOKEN_TYPE_COMMAND },
 	{    "prompt",            do_prompt,            2, TOKEN_TYPE_COMMAND },
 	{    "read",              do_read,              2, TOKEN_TYPE_COMMAND },
 	{    "regexp",            do_regexp,            3, TOKEN_TYPE_REGEX   },
@@ -354,6 +361,7 @@ struct command_type command_table[] =
 	{    "unlocal",           do_unlocal,           1, TOKEN_TYPE_COMMAND },
 	{    "unmacro",           do_unmacro,           0, TOKEN_TYPE_COMMAND },
 	{    "unpathdir",         do_unpathdir,         1, TOKEN_TYPE_COMMAND },
+	{    "unprocedure",       do_unprocedure,       0, TOKEN_TYPE_COMMAND },
 	{    "unprompt",          do_unprompt,          0, TOKEN_TYPE_COMMAND },
 	{    "unsplit",           do_unsplit,           0, TOKEN_TYPE_COMMAND },
 	{    "unsubstitute",      do_unsubstitute,      0, TOKEN_TYPE_COMMAND },

@@ -85,14 +85,24 @@ void check_all_actions(struct session *ses, char *original, char *line, char *bu
 		{
 			show_debug(ses, LIST_ACTION, COLOR_DEBUG "#DEBUG ACTION " COLOR_BRACE "{" COLOR_STRING "%s" COLOR_BRACE "}", node->arg1);
 
-			substitute(ses, node->arg2, buf, SUB_ARG|SUB_SEC);
-
 			if (node->shots && --node->shots == 0)
 			{
 				delete_node_list(ses, LIST_ACTION, node);
 			}
 
-			script_driver(ses, LIST_ACTION, buf);
+			if (IS_LUA_NODE(node))
+			{
+				if (!call_lua_function(ses, node, gtd->vars, gtd->varc))
+				{
+					continue;
+				}
+			}
+			else
+			{
+				substitute(ses, node->arg2, buf, SUB_ARG|SUB_SEC);
+
+				script_driver(ses, LIST_ACTION, buf);
+			}
 
 			return;
 		}
@@ -125,8 +135,6 @@ void check_all_actions_multi(struct session *ses, char *original, char *stripped
 			}
 			show_debug(ses, LIST_ACTION, COLOR_DEBUG "#DEBUG MULTI ACTION " COLOR_BRACE "{" COLOR_STRING "%s" COLOR_BRACE "}", node->arg1);
 
-			substitute(ses, node->arg2, buf, SUB_ARG|SUB_SEC);
-
 			if (node->shots && --node->shots == 0)
 			{
 				delete_node_list(ses, LIST_ACTION, node);
@@ -151,7 +159,17 @@ void check_all_actions_multi(struct session *ses, char *original, char *stripped
 					pto = pts = NULL;
 				}
 			}
-			script_driver(ses, LIST_ACTION, buf);
+
+			if (IS_LUA_NODE(node))
+			{
+				call_lua_function(ses, node, gtd->vars, gtd->varc);
+			}
+			else
+			{
+				substitute(ses, node->arg2, buf, SUB_ARG|SUB_SEC);
+
+				script_driver(ses, LIST_ACTION, buf);
+			}
 
 			ptm = node->arg1 + (*node->arg1 == '~');
 
@@ -272,6 +290,15 @@ int check_all_aliases(struct session *ses, char *input)
 
 					RESTRING(gtd->vars[i], buf);
 				}
+			}
+
+			if (IS_LUA_NODE(node))
+			{
+				call_lua_function(ses, node, gtd->vars, gtd->varc);
+				
+				sprintf(input, "");
+				pop_call();
+				return TRUE;
 			}
 
 			substitute(ses, node->arg2, buf, SUB_ARG);
@@ -435,13 +462,24 @@ void check_all_buttons(struct session *ses, short row, short col, char *arg1, ch
 			RESTRING(gtd->vars[4], word);
 			RESTRING(gtd->vars[5], line);
 
-			substitute(ses, node->arg2, buf, SUB_ARG|SUB_SEC);
-
 			if (node->shots && --node->shots == 0)
 			{
 				delete_node_list(ses, LIST_BUTTON, node);
 			}
-			script_driver(ses, LIST_BUTTON, buf);
+
+			if (IS_LUA_NODE(node))
+			{
+				if (!call_lua_function(ses, node, gtd->vars, 6))
+				{
+					continue;
+				}
+			}
+			else
+			{
+				substitute(ses, node->arg2, buf, SUB_ARG|SUB_SEC);
+
+				script_driver(ses, LIST_BUTTON, buf);
+			}
 
 			break;
 		}
@@ -867,7 +905,11 @@ int check_all_prompts(struct session *ses, char *original, char *line)
 
 		if (check_one_regexp(ses, node, line, original, 0))
 		{
-			if (*node->arg2)
+			if (IS_LUA_NODE(node))
+			{
+				call_lua_substitute(ses, node, original, gtd->vars, gtd->varc);
+			}
+			else if (*node->arg2)
 			{
 				substitute(ses, node->arg2, line, SUB_ARG);
 				substitute(ses, line, original, SUB_VAR|SUB_FUN|SUB_COL|SUB_ESC);
@@ -981,7 +1023,11 @@ void check_all_substitutions(struct session *ses, char *original, char *line)
 
 				strcpy(match, gtd->vars[0]);
 
-				substitute(ses, node->arg2, temp, SUB_ARG);
+
+				if (!IS_LUA_NODE(node))
+				{
+					substitute(ses, node->arg2, temp, SUB_ARG);
+				}
 
 				if (*node->arg1 == '~')
 				{
@@ -1000,7 +1046,14 @@ void check_all_substitutions(struct session *ses, char *original, char *line)
 
 				get_color_codes(gtd->color_reset, pto, gtd->color_reset, GET_ALL);
 
-				substitute(ses, temp, subst, SUB_VAR|SUB_FUN|SUB_COL|SUB_ESC);
+				if (IS_LUA_NODE(node))
+				{
+					call_lua_substitute(ses, node, subst, gtd->vars, gtd->varc);
+				}
+				else
+				{
+					substitute(ses, temp, subst, SUB_VAR|SUB_FUN|SUB_COL|SUB_ESC);
+				}
 
 				ptr += sprintf(ptr, "%s%s", pto, subst);
 
@@ -1219,3 +1272,108 @@ DO_COMMAND(do_untick)
 
 // checked in update.c
 
+
+/******************************************************************************
+*                (T)he K(I)cki(N) (T)ickin D(I)kumud Clie(N)t                 *
+*                                                                             *
+*                         coded by Peter Unold 1992                           *
+*                     recoded by Igor van den Hoven 2004                      *
+******************************************************************************/
+
+
+DO_COMMAND(do_procedure)
+{
+	arg = get_arg_in_braces(ses, arg, arg1, GET_ONE);
+	arg = get_arg_in_braces(ses, arg, arg2, GET_ALL);
+
+	if (*arg1 == 0)
+	{
+		show_list(ses->list[LIST_PROCEDURE], 0);
+	}
+	else if (*arg1 && *arg2 == 0)
+	{
+		if (show_node_with_wild(ses, arg1, ses->list[LIST_PROCEDURE]) == FALSE)
+		{
+			show_message(ses, LIST_PROCEDURE, "#PROCEDURE: NO MATCHES FOUND FOR {%s}.", arg1);
+		}
+	}
+	else
+	{
+		update_node_list(ses->list[LIST_PROCEDURE], arg1, arg2, "", "");
+
+		show_message(ses, LIST_PROCEDURE, "#OK: #PROCEDURE {%s} NOW EXECUTES {%s}.", arg1, arg2);
+	}
+	return ses;
+}
+
+
+DO_COMMAND(do_unprocedure)
+{
+	delete_node_with_wild(ses, LIST_PROCEDURE, arg);
+
+	return ses;
+}
+
+
+DO_COMMAND(do_call)
+{
+	struct listnode *node;
+	struct listroot *root;
+	int i;
+
+	root = ses->list[LIST_PROCEDURE];
+
+	if (gtd->level->ignore || HAS_BIT(root->flags, LIST_FLAG_IGNORE))
+	{
+		return FALSE;
+	}
+
+	arg = get_arg_in_braces(ses, arg, arg1, GET_ONE);
+
+	node = search_node_list(root, arg1);
+
+	if (node == NULL)
+	{
+		show_error(ses, LIST_PROCEDURE, "#CALL: NO SUCH PROCEDURE {%s}.", arg1);
+	}
+	else
+	{
+		RESTRING(gtd->vars[0], arg);
+
+		for (i = 1 ; i < 100 ; i++)
+		{
+			if (*arg == 0)
+			{
+				gtd->varc = i;
+
+				while (i < 100)
+				{
+					*gtd->vars[i++] = 0;
+				}
+				break;
+			}
+
+			arg = get_arg_in_braces(ses, arg, arg1, GET_ONE);
+
+			RESTRING(gtd->vars[i], arg1);
+		}
+
+		if (node->shots && --node->shots == 0)
+		{
+			delete_node_list(ses, LIST_PROCEDURE, node);
+		}
+
+		if (IS_LUA_NODE(node))
+		{
+			call_lua_function(ses, node, gtd->vars, gtd->varc);
+		}
+		else
+		{
+			substitute(ses, node->arg2, arg1, SUB_ARG);
+			
+			script_driver(ses, LIST_PROCEDURE, arg1);
+		}
+	}
+
+	return ses;
+}

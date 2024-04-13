@@ -910,7 +910,15 @@ void tick_update(void)
 					{
 						delete_node_list(ses, LIST_TICKER, node);
 					}
-					script_driver(ses, LIST_TICKER, node->arg2);
+
+					if (IS_LUA_NODE(node))
+					{
+						call_lua_function(ses, node, NULL, 0);
+					}
+					else
+					{
+						script_driver(ses, LIST_TICKER, node->arg2);
+					}
 				}
 			}
 			else
@@ -953,7 +961,14 @@ void delay_update(void)
 
 				delete_index_list(root, root->update);
 
-				script_driver(ses, LIST_DELAY, node->arg2);
+				if (IS_LUA_NODE(node))
+				{
+					call_lua_function(ses, node, NULL, 0);
+				}
+				else
+				{
+					script_driver(ses, LIST_DELAY, node->arg2);
+				}
 			}
 			else
 			{

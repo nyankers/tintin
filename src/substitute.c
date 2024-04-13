@@ -1221,39 +1221,49 @@ int substitute(struct session *ses, char *string, char *result, int flags)
 							pte++;
 						}
 					}
-					substitute(ses, node->arg2, buf, SUB_ARG);
 
 					if (node->shots && --node->shots == 0)
 					{
 						delete_node_list(ses, LIST_FUNCTION, node);
 					}
 
-					script_driver(ses, LIST_FUNCTION, buf);
-
-					node = search_nest_node_ses(ses, "result");
-
-					if (node)
+					if (IS_LUA_NODE(node))
 					{
-						if (node->root)
-						{
-							str = str_dup("");
+						call_lua_substitute(ses, node, buf, gtd->vars, gtd->varc);
 
-							show_nest_node(node, &str, TRUE);
-
-							pto += substitute(ses, str, pto, flags_neol);
-
-							str_free(str);
-						}
-						else
-						{
-							// sub color codes
-
-							pto += substitute(ses, node->arg2, pto, flags_neol);
-						}
+						pto += sprintf(pto, "%s", buf);
 					}
 					else
 					{
-						pto += sprintf(pto, "$result");
+						substitute(ses, node->arg2, buf, SUB_ARG);
+
+						script_driver(ses, LIST_FUNCTION, buf);
+
+						node = search_nest_node_ses(ses, "result");
+
+						if (node)
+						{
+							if (node->root)
+							{
+								str = str_dup("");
+
+								show_nest_node(node, &str, TRUE);
+
+								pto += substitute(ses, str, pto, flags_neol);
+
+								str_free(str);
+							}
+							else
+							{
+								// sub color codes
+
+								pto += substitute(ses, node->arg2, pto, flags_neol);
+							}
+						}
+						else
+						{
+							pto += sprintf(pto, "$result");
+						}
 					}
 				}
 				else

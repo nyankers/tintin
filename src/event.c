@@ -266,7 +266,10 @@ int check_all_events(struct session *ses, int flags, int args, int vars, char *f
 					va_end(list);
 				}
 
-				substitute(ses_ptr, node->arg2, buf, sub);
+				if (!IS_LUA_NODE(node))
+				{
+					substitute(ses_ptr, node->arg2, buf, sub);
+				}
 
 				if (!HAS_BIT(flags, EVENT_FLAG_UPDATE) && HAS_BIT(ses_ptr->list[LIST_EVENT]->flags, LIST_FLAG_DEBUG))
 				{
@@ -280,7 +283,14 @@ int check_all_events(struct session *ses, int flags, int args, int vars, char *f
 
 				gtd->level->quiet += HAS_BIT(flags, EVENT_FLAG_UPDATE) ? 1 : 0;
 
-				script_driver(ses_ptr, LIST_EVENT, buf);
+				if (IS_LUA_NODE(node))
+				{
+					call_lua_function(ses_ptr, node, gtd->vars, vars);
+				}
+				else
+				{
+					script_driver(ses_ptr, LIST_EVENT, buf);
+				}
 
 				gtd->level->quiet -= HAS_BIT(flags, EVENT_FLAG_UPDATE) ? 1 : 0;
 

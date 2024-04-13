@@ -525,6 +525,10 @@ void init_tintin(int greeting)
 
 	init_msdp_table();
 
+#ifdef HAVE_LUA
+	init_lua();
+#endif
+
 	// global tintin session
 
 	gts = (struct session *) calloc(1, sizeof(struct session));
@@ -556,6 +560,9 @@ void init_tintin(int greeting)
 	gts->input          = calloc(1, sizeof(struct input_data));
 	gts->scroll         = calloc(1, sizeof(struct scroll_data));
 	gts->split          = calloc(1, sizeof(struct split_data));
+#ifdef HAVE_LUA
+	setup_lua_session(gts);
+#endif
 
 	init_local(gts);
 

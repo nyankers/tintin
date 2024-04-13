@@ -634,6 +634,8 @@ CPPFLAGS
 LDFLAGS
 CFLAGS
 CC
+LUA
+LUA_OBJS
 BIG5
 mybindir
 MYLIB
@@ -657,6 +659,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -680,10 +683,12 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 enable_big5
+with_lua
 '
       ac_precious_vars='build_alias
 host_alias
 target_alias
+LUA
 CC
 CFLAGS
 LDFLAGS
@@ -728,6 +733,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -980,6 +986,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1117,7 +1132,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1270,6 +1285,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1299,7 +1315,13 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-big5           enable big5 support
 
+Optional Packages:
+  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
+  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-lua           disable Lua support even if present
+
 Some influential environment variables:
+  LUA         specify the Lua library to use, e.g. luajit, defaults to lua
   CC          C compiler command
   CFLAGS      C compiler flags
   LDFLAGS     linker flags, e.g. -L<lib dir> if you have libraries in a
@@ -2156,6 +2178,7 @@ $as_echo "Configuring TinTin++" >&6; }
 
 
 
+
 if  test $bindir != "\${exec_prefix}/bin"
 then
 	mybindir="$bindir"
@@ -2183,6 +2206,31 @@ if test "${enable_big5+set}" = set; then :
 fi
 
 
+
+# Check whether --with-lua was given.
+if test "${with_lua+set}" = set; then :
+  withval=$with_lua;
+fi
+
+
+
+
+if  test "x$with_lua" != "xno" ; then :
+  if  test "x$LUA" = "x" ; then :
+  LUA="lua"
+else
+  with_lua="yes"
+
+fi
+else
+  if  test "x$LUA" != "x" ; then :
+  LUA="",
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: gave --without-lua with LUA defined" >&5
+$as_echo "$as_me: WARNING: gave --without-lua with LUA defined" >&2;}
+
+fi
+
+fi
 
 # Checks for programs.
 
@@ -3468,6 +3516,59 @@ fi
 done
 
 
+if  test "x$with_lua" != "xno" ; then :
+
+	have_lua="yes"
+	for ac_header in lua.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "lua.h" "ac_cv_header_lua_h" "$ac_includes_default"
+if test "x$ac_cv_header_lua_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LUA_H 1
+_ACEOF
+
+else
+  have_lua="no"
+
+fi
+
+done
+
+	for ac_header in lauxlib.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "lauxlib.h" "ac_cv_header_lauxlib_h" "$ac_includes_default"
+if test "x$ac_cv_header_lauxlib_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LAUXLIB_H 1
+_ACEOF
+
+else
+  have_lua="no"
+
+fi
+
+done
+
+	for ac_header in lualib.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "lualib.h" "ac_cv_header_lualib_h" "$ac_includes_default"
+if test "x$ac_cv_header_lualib_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LUALIB_H 1
+_ACEOF
+
+else
+  have_lua="no"
+
+fi
+
+done
+
+
+fi
+
+
+
 # Checks for typedefs, structures, and compiler characteristics.
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for an ANSI C-conforming const" >&5
 $as_echo_n "checking for an ANSI C-conforming const... " >&6; }
@@ -4595,6 +4696,74 @@ _ACEOF
 
 fi
 
+
+if  test "x$have_lua" == "xyes" ; then :
+  as_ac_Lib=`$as_echo "ac_cv_lib_$LUA''_lua_setfenv" | $as_tr_sh`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for lua_setfenv in -l$LUA" >&5
+$as_echo_n "checking for lua_setfenv in -l$LUA... " >&6; }
+if eval \${$as_ac_Lib+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-l$LUA  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char lua_setfenv ();
+int
+main ()
+{
+return lua_setfenv ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  eval "$as_ac_Lib=yes"
+else
+  eval "$as_ac_Lib=no"
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+eval ac_res=\$$as_ac_Lib
+	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+$as_echo "$ac_res" >&6; }
+if eval test \"x\$"$as_ac_Lib"\" = x"yes"; then :
+  cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_LIB$LUA" | $as_tr_cpp` 1
+_ACEOF
+
+  LIBS="-l$LUA $LIBS"
+
+else
+  have_lua="no"
+
+fi
+
+
+fi
+
+if  test "x$have_lua" = "xyes" ; then :
+
+		LUA_OBJS="lua_tt.o lua_map.o"
+
+$as_echo "#define HAVE_LUA /**/" >>confdefs.h
+
+
+else
+  if  test "x$with_lua" = "xyes"; then :
+  as_fn_error $? "\"requested Lua but could not find Lua\"" "$LINENO" 5
+fi
+
+fi
 
 for ac_prog in gmake make
 do
@@ -6161,6 +6330,12 @@ $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
 
 
+echo
+if  test "x$have_lua" = "xyes" ; then :
+  echo "Configured with Lua."
+else
+  echo "Configured without Lua."
+fi
 echo
 echo "Configure has finished.  To compile, type: make"
 echo

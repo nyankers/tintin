@@ -275,7 +275,7 @@ char *str_dup_printf(char *fmt, ...)
 	return str;
 }
 
-char *str_cpy(char **str, char *buf)
+char *str_cpy(char **str, const char *buf)
 {
 	int buf_len;
 	struct str_data *str_ptr;

@@ -258,3 +258,6 @@
 
 /* Define to `unsigned int' if <sys/types.h> does not define. */
 #undef size_t
+
+/* Define to 1 if you have lua. */
+#undef HAVE_LUA

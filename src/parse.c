@@ -202,7 +202,10 @@ struct session *parse_input(struct session *ses, char *input)
 
 		if (check_all_aliases(ses, line))
 		{
-			ses = script_driver(ses, LIST_ALIAS, line);
+			if (*line)
+			{
+				ses = script_driver(ses, LIST_ALIAS, line);
+			}
 		}
 		else if (HAS_BIT(ses->config_flags, CONFIG_FLAG_SPEEDWALK) && is_speedwalk(ses, line))
 		{
@@ -237,7 +240,10 @@ struct session *parse_input(struct session *ses, char *input)
 		}
 		else if (check_all_aliases(ses, line))
 		{
-			ses = script_driver(ses, LIST_ALIAS, line);
+			if (*line)
+			{
+				ses = script_driver(ses, LIST_ALIAS, line);
+			}
 		}
 		else if (HAS_BIT(ses->config_flags, CONFIG_FLAG_SPEEDWALK) && is_speedwalk(ses, line))
 		{

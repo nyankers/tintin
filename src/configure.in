@@ -31,6 +31,7 @@ AC_SUBST(MYINCLUDE)
 AC_SUBST(MYLIB)    
 AC_SUBST(mybindir)
 AC_SUBST(BIG5)
+AC_SUBST(LUA_OBJS)
 
 if [ test $bindir != "\${exec_prefix}/bin" ]
 then
@@ -55,6 +56,20 @@ fi
 
 AC_ARG_ENABLE(big5, [  --enable-big5           enable big5 support], BIG5="-DBIG5")
 
+AC_ARG_WITH(lua,    [  --without-lua           disable Lua support even if present])
+
+AC_ARG_VAR(LUA,     [  specify the Lua library to use, e.g. luajit, defaults to lua])
+
+AS_IF([ test "x$with_lua" != "xno" ],
+	[AS_IF([ test "x$LUA" = "x" ],
+		[LUA="lua"],
+		[with_lua="yes"]
+	)],
+	[AS_IF([ test "x$LUA" != "x" ],
+		[LUA="",
+		AC_MSG_WARN([gave --without-lua with LUA defined])]
+	)]
+)
 
 # Checks for programs.
 
@@ -75,6 +90,21 @@ AC_CHECK_HEADERS([gnutls/gnutls.h],
 	[AC_DEFINE([HAVE_GNUTLS_H],,
 	[Define to 1 if you have <gnutls/gnutls.h>.])],
 	[AC_MSG_WARN([gnutls header file not found, is the develoment part present])])
+
+AS_IF([ test "x$with_lua" != "xno" ], [
+	have_lua="yes"
+	AC_CHECK_HEADERS([lua.h],,
+		[have_lua="no"]
+	)
+	AC_CHECK_HEADERS([lauxlib.h],,
+		[have_lua="no"]
+	)
+	AC_CHECK_HEADERS([lualib.h],,
+		[have_lua="no"]
+	)
+])
+
+
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -109,6 +139,20 @@ AC_CHECK_LIB(pcre, pcre_compile,,
 AC_CHECK_LIB(gnutls, gnutls_init)
 AC_CHECK_LIB(m, sqrt)
 
+AS_IF([ test "x$have_lua" == "xyes" ],
+	[AC_CHECK_LIB($LUA, lua_setfenv,,
+		have_lua="no"
+	)]
+)
+
+AS_IF([ test "x$have_lua" = "xyes" ],
+	[
+		LUA_OBJS="lua_tt.o lua_map.o"
+		AC_DEFINE([HAVE_LUA],,[Define to 1 if you have Lua.])
+	],
+	[AS_IF([ test "x$with_lua" = "xyes"], [AC_MSG_ERROR(["requested Lua but could not find Lua"])])]
+)
+
 AC_CHECK_PROGS(MAKE, gmake make)
 
 AC_CHECK_FILES([/dev/ptmx])
@@ -119,6 +163,8 @@ AC_HEADER_DIRENT
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
 
+echo
+AS_IF([ test "x$have_lua" = "xyes" ], [echo "Configured with Lua."], [echo "Configured without Lua."])
 echo
 echo "Configure has finished.  To compile, type: make"
 echo

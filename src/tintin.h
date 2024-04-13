@@ -105,6 +105,12 @@
 	#define SO_PEERCRED 17
 #endif
 
+#ifdef HAVE_LUA
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
+#endif
+
 #ifndef __TINTIN_H__
 #define __TINTIN_H__
 
@@ -249,6 +255,7 @@
 #define COLOR_STATEMENT     "\e[38;5;040m" // "<aea>" // green
 #define COLOR_STRING        "\e[38;5;188m" // "<eee>" // white
 #define COLOR_DEBUG         "\e[38;5;037m" // "<add>" // cyan
+#define COLOR_LUA           "\e[38;5;32m"  // "<acd>" // azure
 
 #define COLOR_TEXT          "\e[0m"        // "<088>" // reset
 #define COLOR_TINTIN        "\e[38;5;184m" // "<eea>" // yellow
@@ -280,6 +287,7 @@ enum lists
 	LIST_MACRO,
 	LIST_PATH,
 	LIST_PATHDIR,
+	LIST_PROCEDURE,
 	LIST_PROMPT,
 	LIST_SUBSTITUTE,
 	LIST_TAB,
@@ -305,13 +313,14 @@ enum lists
 #define LIST_MACRO                      13
 #define LIST_PATH                       14
 #define LIST_PATHDIR                    15
-#define LIST_PROMPT                     16
-#define LIST_SUBSTITUTE                 17
-#define LIST_TAB                        18
-#define LIST_TERRAIN                    19
-#define LIST_TICKER                     20
-#define LIST_VARIABLE                   21
-#define LIST_MAX                        22
+#define LIST_PROCEDURE                  16
+#define LIST_PROMPT                     17
+#define LIST_SUBSTITUTE                 18
+#define LIST_TAB                        19
+#define LIST_TERRAIN                    20
+#define LIST_TICKER                     21
+#define LIST_VARIABLE                   22
+#define LIST_MAX                        23
 */
 /*
 	Command type
@@ -1033,13 +1042,30 @@ enum operators
 #define VERBATIM(ses)             (gtd->level->verbatim || (gtd->level->input == 0 && (HAS_BIT((ses)->config_flags, CONFIG_FLAG_VERBATIM) || HAS_BIT(gtd->flags, TINTIN_FLAG_CHILDLOCK))))
 
 
-
 /*
 	Compatibility
 */
 
 
 #define atoll(str) (strtoll(str, NULL, 10))
+
+/*
+        Lua Utilities
+*/
+
+#ifdef HAVE_LUA
+
+#define DO_LUA(lua)               int lua(lua_State *L)
+#define IS_LUA_NODE(node)         ((node)->lua_ref != LUA_NOREF)
+
+#else
+
+#define IS_LUA_NODE(node)         (FALSE)
+#define clear_lua_data(...)       (printf("clear_lua_data: lua isn't compiled.\n"))
+#define call_lua_function(...)    (printf("call_lua_function: lua isn't compiled.\n"))
+#define call_lua_substitute(...)  (printf("call_lua_substitute: lua isn't compiled.\n"))
+
+#endif
 
 /************************ structures *********************/
 
@@ -1065,6 +1091,9 @@ struct listnode
 	char                  * group;
 	unsigned int            shots;
 	int                     flags;
+#ifdef HAVE_LUA
+	int                     lua_ref;
+#endif
 	union
 	{
 		pcre              * regex;      // act, alias, gag, highlight, substitute
@@ -1169,6 +1198,11 @@ struct tintin_data
 	int                     varc;
 	int                     cmdc;
 	char                    color_reset[COLOR_SIZE];
+#ifdef HAVE_LUA
+	lua_State             * lua;
+	struct session        * lua_ses;
+	int                     lua_nodes;
+#endif
 };
 
 struct session
@@ -1227,6 +1261,10 @@ struct session
 	unsigned long long      rand;
 	unsigned short          rkey;
 	struct port_data      * proxy;
+#ifdef HAVE_LUA
+	lua_State             * lua;
+	int                     lua_ref;
+#endif
 };
 
 struct edit_data
@@ -2361,6 +2399,25 @@ extern void vt102_to_html(struct session *ses, char *txt, char *out);
 #endif
 
 
+#ifdef HAVE_LUA
+#ifndef __LUA_H__
+#define __LUA_H__
+
+void init_lua();
+void register_lua_module(lua_State *L, const char *name, luaL_Reg *reg);
+void setup_lua_session(struct session *ses);
+void close_lua_session(struct session *ses);
+int call_lua_function(struct session *ses, struct listnode *node, char **args, int argc);
+void call_lua_substitute(struct session *ses, struct listnode *node, char *result, char **args, int argc);
+int copy_lua_reference(int ref);
+int clear_lua_data(struct listnode *node);
+char *opt_luastring(lua_State *L, int n);
+char *get_luastring(lua_State *L, int n);
+
+#endif
+#endif
+
+
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
@@ -2415,7 +2472,7 @@ extern char *str_ndup(char *original, int len);
 
 extern char *str_resize(char **ptr, int add);
 extern void  str_clone(char **clone, char *original);
-extern char *str_cpy(char **ptr, char *str);
+extern char *str_cpy(char **ptr, const char *str);
 extern char *str_cpy_printf(char **ptr, char *fmt, ...);
 extern char *str_ncpy(char **ptr, char *str, int len);
 extern char *str_cat_len(char **str, char *arg, int len);

@@ -466,7 +466,14 @@ int check_key(char *input, int len)
 						delete_node_list(gtd->ses, LIST_MACRO, node);
 					}
 
-					script_driver(gtd->ses, LIST_MACRO, buf);
+					if (IS_LUA_NODE(node))
+					{
+						call_lua_function(gtd->ses, node, NULL, 0);
+					}
+					else
+					{
+						script_driver(gtd->ses, LIST_MACRO, buf);
+					}
 
 					if (HAS_BIT(gtd->flags, TINTIN_FLAG_PRESERVEMACRO))
 					{

@@ -89,6 +89,13 @@ struct listroot *copy_list(struct session *ses, struct listroot *sourcelist, int
 			node->shots = sourcelist->list[i]->shots;
 			node->group = strdup(sourcelist->list[i]->group);
 
+#ifdef HAVE_LUA
+			if (IS_LUA_NODE(sourcelist->list[i]))
+			{
+				node->lua_ref = copy_lua_reference(sourcelist->list[i]->lua_ref);
+			}
+#endif
+
 			switch (type)
 			{
 				case LIST_ALIAS:
@@ -150,6 +157,10 @@ struct listnode *create_node(char *arg1, char *arg2, char *arg3, char *arg4)
 	node->arg2 = str_dup(arg2);
 	node->arg3 = str_dup(arg3);
 	node->arg4 = str_dup(arg4);
+
+#ifdef HAVE_LUA
+	node->lua_ref = LUA_NOREF;
+#endif	
 
 	return node;
 }
@@ -242,6 +253,11 @@ struct listnode *update_node_list(struct listroot *root, char *arg1, char *arg2,
 	if (index != -1)
 	{
 		node = root->list[index];
+
+		if (IS_LUA_NODE(node))
+		{
+			clear_lua_data(node);
+		}
 
 		if (gtd->level->shots)
 		{
@@ -427,6 +443,11 @@ void dispose_node(struct listnode *node)
 		free_list(node->root);
 	}
 */
+	if (IS_LUA_NODE(node))
+	{
+		clear_lua_data(node);
+	}
+
 	str_free(node->arg1);
 	str_free(node->arg2);
 	str_free(node->arg3);
@@ -807,7 +828,14 @@ void show_node(struct listroot *root, struct listnode *node, int level)
 
 	str_arg2 = str_alloc_stack(0);
 
-	show_nest_node(node, &str_arg2, TRUE);
+	if (IS_LUA_NODE(node))
+	{
+		str_arg2 = COLOR_LUA "<lua function>";
+	}
+	else
+	{
+		show_nest_node(node, &str_arg2, TRUE);
+	}
 
 	switch (list_table[root->type].args)
 	{

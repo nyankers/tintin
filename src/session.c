@@ -470,6 +470,10 @@ struct session *new_session(struct session *ses, char *name, char *arg, int desc
 
 	memcpy(&newses->cur_terminal, &gts->cur_terminal, sizeof(gts->cur_terminal));
 
+#ifdef HAVE_LUA
+	setup_lua_session(newses);
+#endif
+
 	if (desc == 0)
 	{
 		if (!check_all_events(newses, EVENT_FLAG_GAG, 0, 4, "GAG SESSION CREATED", newses->name, newses->session_host, newses->session_ip, newses->session_port))
@@ -774,6 +778,13 @@ void dispose_session(struct session *ses)
 	{
 		delete_map(ses);
 	}
+
+#ifdef HAVE_LUA
+	if (ses->lua)
+	{
+		close_lua_session(ses);
+	}
+#endif
 
 	for (index = 0 ; index < LIST_MAX ; index++)
 	{

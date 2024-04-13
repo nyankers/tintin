@@ -414,9 +414,23 @@ DO_COMMAND(do_write)
 	struct listnode *node;
 
 	int i, j, fix, cnt = 0;
+	int force = 0, write_lua = 0;
 
 	arg = sub_arg_in_braces(ses, arg, arg1, GET_ONE, SUB_VAR|SUB_FUN);
-	arg = get_arg_in_braces(ses, arg, arg2, GET_ONE);
+
+	while (*arg)
+	{
+		arg = get_arg_in_braces(ses, arg, arg2, GET_ONE);
+
+		if (is_abbrev(arg2, "FORCE"))
+		{
+			force = 1;
+		}
+		else if (is_abbrev(arg2, "LUA"))
+		{
+			write_lua = 1;
+		}
+	}
 
 	if (*arg1 == 0)
 	{
@@ -427,7 +441,7 @@ DO_COMMAND(do_write)
 		return ses;
 	}
 	
-	if (is_suffix(arg1, ".map") && !is_abbrev(arg2, "FORCE"))
+	if (is_suffix(arg1, ".map") && !force)
 	{
 		check_all_events(ses, EVENT_FLAG_SYSTEM, 0, 2, "WRITE ERROR", arg1, "INVALID FILE EXTENSION");
 
@@ -465,6 +479,11 @@ DO_COMMAND(do_write)
 				continue;
 			}
 
+			if (IS_LUA_NODE(node) && !write_lua)
+			{
+				continue;
+			}
+
 			if (*node->group == 0)
 			{
 				write_node(ses, i, node, file);
@@ -497,63 +516,72 @@ void write_node(struct session *ses, int list, struct listnode *node, FILE *file
 
 	push_call("write_node(%d,%p,%p)",list,node,file);
 
-	switch (list)
+	if (IS_LUA_NODE(node))
 	{
-		case LIST_EVENT:
-		case LIST_FUNCTION:
-		case LIST_MACRO:
-			val = asprintf(&result, "%c%s {%s}\n{\n%s\n}\n\n", gtd->tintin_char, list_table[list].name, node->arg1, script_writer(ses, node->arg2));
-			break;
+		show_message(ses, LIST_COMMAND, "#WRITE: CANNOT #WRITE LUA COMMAND (%c%s {%s}), WRITING #NOP INSTEAD", gtd->tintin_char, list_table[list].name, node->arg1);
 
-		case LIST_ACTION:
-		case LIST_ALIAS:
-		case LIST_BUTTON:
-			if (!strcmp(node->arg3, "5"))
-			{
+		val = asprintf(&result, "%cNOP {%cLUA COMMAND: %c%s {%s}}\n\n", gtd->tintin_char, gtd->tintin_char, gtd->tintin_char, list_table[list].name, node->arg1);
+	}
+	else
+	{
+		switch (list)
+		{
+			case LIST_EVENT:
+			case LIST_FUNCTION:
+			case LIST_MACRO:
 				val = asprintf(&result, "%c%s {%s}\n{\n%s\n}\n\n", gtd->tintin_char, list_table[list].name, node->arg1, script_writer(ses, node->arg2));
-			}
-			else
-			{
-				val = asprintf(&result, "%c%s {%s}\n{\n%s\n}\n{%s}\n\n", gtd->tintin_char, list_table[list].name, node->arg1, script_writer(ses, node->arg2), node->arg3);
-			}
-			break;
+				break;
 
-		case LIST_VARIABLE:
-			str = str_alloc_stack(0);
+			case LIST_ACTION:
+			case LIST_ALIAS:
+			case LIST_BUTTON:
+				if (!strcmp(node->arg3, "5"))
+				{
+					val = asprintf(&result, "%c%s {%s}\n{\n%s\n}\n\n", gtd->tintin_char, list_table[list].name, node->arg1, script_writer(ses, node->arg2));
+				}
+				else
+				{
+					val = asprintf(&result, "%c%s {%s}\n{\n%s\n}\n{%s}\n\n", gtd->tintin_char, list_table[list].name, node->arg1, script_writer(ses, node->arg2), node->arg3);
+				}
+				break;
 
-//			show_nest_node(node, &str, 1);
-			view_nest_node(node, &str, 0, TRUE, FALSE);
+			case LIST_VARIABLE:
+				str = str_alloc_stack(0);
 
-			if (node->root)
-			{
-				val = asprintf(&result, "%c%s {%s}\n{\n%s}\n", gtd->tintin_char, list_table[list].name, node->arg1, str);
-			}
-			else
-			{
-				val = asprintf(&result, "%c%s {%s} {%s}\n", gtd->tintin_char, list_table[list].name, node->arg1, str);
-			}
-			break;
+				//			show_nest_node(node, &str, 1);
+				view_nest_node(node, &str, 0, TRUE, FALSE);
 
-		default:
-			switch (list_table[list].args)
-			{
-				case 0:
-					result = strdup("");
-					break;
-				case 1:
-					val = asprintf(&result, "%c%s {%s}\n", gtd->tintin_char, list_table[list].name, node->arg1);
-					break;
-				case 2:
-					val = asprintf(&result, "%c%s {%s} {%s}\n", gtd->tintin_char, list_table[list].name, node->arg1, node->arg2);
-					break;
-				case 3:
-					val = asprintf(&result, "%c%s {%s} {%s} {%s}\n", gtd->tintin_char, list_table[list].name, node->arg1, node->arg2, node->arg3);
-					break;
-				case 4:
-					val = asprintf(&result, "%c%s {%s} {%s} {%s} {%s}\n", gtd->tintin_char, list_table[list].name, node->arg1, node->arg2, node->arg3, node->arg4);
-					break;
-			}
-			break;
+				if (node->root)
+				{
+					val = asprintf(&result, "%c%s {%s}\n{\n%s}\n", gtd->tintin_char, list_table[list].name, node->arg1, str);
+				}
+				else
+				{
+					val = asprintf(&result, "%c%s {%s} {%s}\n", gtd->tintin_char, list_table[list].name, node->arg1, str);
+				}
+				break;
+
+			default:
+				switch (list_table[list].args)
+				{
+					case 0:
+						result = strdup("");
+						break;
+					case 1:
+						val = asprintf(&result, "%c%s {%s}\n", gtd->tintin_char, list_table[list].name, node->arg1);
+						break;
+					case 2:
+						val = asprintf(&result, "%c%s {%s} {%s}\n", gtd->tintin_char, list_table[list].name, node->arg1, node->arg2);
+						break;
+					case 3:
+						val = asprintf(&result, "%c%s {%s} {%s} {%s}\n", gtd->tintin_char, list_table[list].name, node->arg1, node->arg2, node->arg3);
+						break;
+					case 4:
+						val = asprintf(&result, "%c%s {%s} {%s} {%s} {%s}\n", gtd->tintin_char, list_table[list].name, node->arg1, node->arg2, node->arg3, node->arg4);
+						break;
+				}
+				break;
+		}
 	}
 
 	if (val != -1)
