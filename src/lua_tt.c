@@ -25,6 +25,7 @@ DO_LUA(tt_ignore);
 DO_LUA(tt_macro);
 DO_LUA(tt_parse);
 DO_LUA(tt_parse_list);
+DO_LUA(tt_print);
 DO_LUA(tt_proc);
 DO_LUA(tt_prompt);
 DO_LUA(tt_quiet);
@@ -64,6 +65,7 @@ const luaL_Reg tt_api_reg[] = {
 	{ "macro", tt_macro },
 	{ "parse", tt_parse },
 	{ "parse_list", tt_parse_list },
+	{ "print", tt_print },
 	{ "proc", tt_proc },
 	{ "prompt", tt_prompt },
 	{ "quiet", tt_quiet },
@@ -198,6 +200,30 @@ DO_LUA(tt_show)
 	str_cpy_printf(&out, "%s%s%s", COLOR_TEXT, tmp, COLOR_TEXT);
 
 	tintin_puts3(gtd->lua_ses, out, prompt);
+
+	return 0;
+}
+
+DO_LUA(tt_print)
+{
+	char *arg1, *arg2, *arg3;
+	int prompt;
+
+	arg1 = get_luastring(L, 1);
+
+	prompt = is_suffix(arg1, "\\") && !is_suffix(arg1, "\\\\");
+
+	arg2 = opt_luastring(L, 2);
+	arg3 = opt_luastring(L, 3);
+
+	if (*arg2)
+	{
+		split_show(gtd->lua_ses, arg1, arg2, arg3);
+
+		return 0;
+	}
+
+	tintin_puts3(gtd->lua_ses, arg1, prompt);
 
 	return 0;
 }

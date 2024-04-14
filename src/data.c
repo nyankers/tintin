@@ -94,6 +94,10 @@ struct listroot *copy_list(struct session *ses, struct listroot *sourcelist, int
 			{
 				node->lua_ref = copy_lua_reference(sourcelist->list[i]->lua_ref);
 			}
+			else
+			{
+				node->lua_ref = LUA_NOREF;
+			}
 #endif
 
 			switch (type)

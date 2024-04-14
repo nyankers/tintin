@@ -3,6 +3,8 @@
 #ifdef HAVE_LUA
 
 DO_LUA(map_api_at);
+DO_LUA(map_api_check_exit);
+DO_LUA(map_api_check_room);
 DO_LUA(map_api_count);
 DO_LUA(map_api_exists);
 DO_LUA(map_api_find);
@@ -45,6 +47,8 @@ DO_LUA(map_api_exit_weight);
 
 const luaL_Reg map_api_reg[] = {
 	{ "at", map_api_at },
+	{ "check_exit", map_api_check_exit },
+	{ "check_room", map_api_check_room },
 	{ "exists", map_api_exists },
 	{ "exit", map_api_exit },
 	{ "exit_color", map_api_exit_color },
@@ -167,6 +171,11 @@ void check_in_map_lua(lua_State *L)
 	}
 }
 
+int is_valid_room(struct session *ses, int vnum)
+{
+	return vnum >= 1 && vnum <= ses->map->size && ses->map->room_list[vnum] != NULL;
+}
+
 int get_in_room_lua(lua_State *L, int n)
 {
 	int in_room;
@@ -177,9 +186,9 @@ int get_in_room_lua(lua_State *L, int n)
 	{
 		in_room = lua_tonumber(L, n);
 
-		if (in_room < 1 || in_room > gtd->lua_ses->map->size)
+		if (!is_valid_room(gtd->lua_ses, in_room))
 		{
-			return luaL_error(L, "invalid room: %d", in_room);
+			luaL_error(L, "invalid room: %d", in_room);
 		}
 	}
 	else
@@ -193,6 +202,19 @@ int get_in_room_lua(lua_State *L, int n)
 	}
 
 	return in_room;
+}
+
+DO_LUA(map_api_check_room)
+{
+	int vnum;
+
+	check_in_map_lua(L);
+
+	vnum = luaL_checkint(L, 1);
+
+	lua_pushboolean(L, is_valid_room(gtd->lua_ses, vnum));
+
+	return 1;
 }
 
 DO_LUA(map_api_at)
@@ -266,6 +288,40 @@ struct exit_data *get_lua_exit(lua_State *L)
 	vnum = get_in_room_lua(L, 2);
 
 	return find_exit(gtd->lua_ses, vnum, arg1);
+}
+
+DO_LUA(map_api_check_exit)
+{
+	char *arg1;
+	int vnum;
+
+	check_in_map_lua(L);
+
+	if (lua_isnumber(L, 2))
+	{
+		vnum = lua_tonumber(L, 2);
+
+		if (!is_valid_room(gtd->lua_ses, vnum))
+		{
+			lua_pushboolean(L, FALSE);
+			return 1;
+		}
+	}
+	else
+	{
+		vnum = gtd->lua_ses->map->in_room;
+
+		if (gtd->lua_ses->map->room_list[vnum] == NULL)
+		{
+			luaL_error(L, "not inside the map");
+		}
+	}
+
+	arg1 = get_luastring(L, 1);
+
+	lua_pushboolean(L, find_exit(gtd->lua_ses, vnum, arg1) != NULL);
+
+	return 1;
 }
 
 DO_LUA(map_api_exit)
