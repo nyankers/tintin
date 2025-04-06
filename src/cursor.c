@@ -2563,6 +2563,16 @@ int cursor_scrollback_tab_add(int flag)
 						ptb++;
 						break;
 
+					case '\'':
+						if (ptb[1] == 's' && (ptb[2] < 'a' || ptb[2] > 'z'))
+						{
+							*ptt++ = 0;
+							ptb++;
+							break;
+						}
+						*ptt++ = *ptb++;
+						break;
+
 					default:
 						*ptt++ = *ptb++;
 						break;

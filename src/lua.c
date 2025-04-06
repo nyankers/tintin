@@ -38,6 +38,7 @@ int push_lua_data(lua_State *L, struct listnode *node);
 
 extern void tt_api_init(lua_State *L);
 extern void map_api_init(lua_State *L);
+extern void screen_api_init(lua_State *L);
 #endif
 
 DO_COMMAND(do_lua)
@@ -215,82 +216,118 @@ int call_lua(struct session *ses, int nargs, int nresults)
 	return result;
 }
 
-int call_lua_function(struct session *ses, struct listnode *node, char **args, int argc)
+int call_lua_function(struct session *ses, struct listnode *node, char **args, int argc, int line)
 {
+	lua_State *L = ses->lua;
 	const char *error;
 	int i, result;
 
 	push_call("call_lua_function(%p,%p,%p,%d)", ses, node, args, argc);
+	gtd->level->input++;
 
-	push_lua_data(ses->lua, node);
+	push_lua_data(L, node);
 
-	for (i = 0; i < argc; i++)
+	if (line && argc > 0)
 	{
-		lua_pushstring(ses->lua, args[i]);
+		if (argc > 0)
+		{
+			lua_pushstring(L, args[0]);
+		}
+		else
+		{
+			lua_pushliteral(L, "");
+			line--;
+		}
+		lua_setglobal(L, "LINE");
 	}
 
-	if (call_lua(ses, argc, 1))
+	for (i = line; i < argc; i++)
 	{
-		error = lua_tolstring(ses->lua, -1, NULL);
+		lua_pushstring(L, args[i]);
+	}
+
+	if (call_lua(ses, argc - line, 1))
+	{
+		error = lua_tolstring(L, -1, NULL);
 
 		show_error(ses, LIST_COMMAND, "#LUA ERROR: %s", error);
 
-		lua_pop(ses->lua, 1);
+		lua_pop(L, 1);
 
+		gtd->level->input--;
 		pop_call();
 		return TRUE;
 	}
 
-	result = !lua_isboolean(ses->lua, -1) || lua_toboolean(ses->lua, -1);
+	result = !lua_isboolean(L, -1) || lua_toboolean(L, -1);
 
-	lua_pop(ses->lua, 1);
+	lua_pop(L, 1);
 
+	gtd->level->input--;
 	pop_call();
 	return result;
 }
 
-void call_lua_substitute(struct session *ses, struct listnode *node, char *output, char **args, int argc)
+void call_lua_substitute(struct session *ses, struct listnode *node, char *output, char **args, int argc, int line)
 {
+	lua_State *L = ses->lua;
 	const char *error;
 	int i;
 	const char *result;
 
 	push_call("call_lua_substitute(%p,%p,%p,%p,%d)", ses, node, output, args, argc);
+	gtd->level->input++;
 
-	push_lua_data(ses->lua, node);
+	push_lua_data(L, node);
 
-	for (i = 0; i < argc; i++)
+	if (line)
 	{
-		lua_pushstring(ses->lua, args[i]);
+		if (argc > 0)
+		{
+			lua_pushstring(L, args[0]);
+		}
+		else
+		{
+			lua_pushliteral(L, "");
+			line--;
+		}
+		lua_setglobal(L, "LINE");
 	}
 
-	if (call_lua(ses, argc, 1))
+	for (i = line; i < argc; i++)
 	{
-		error = lua_tolstring(ses->lua, -1, NULL);
+		lua_pushstring(L, args[i]);
+	}
+
+	if (call_lua(ses, argc - line, 1))
+	{
+		error = lua_tolstring(L, -1, NULL);
 
 		show_error(ses, LIST_COMMAND, "#LUA ERROR: %s", error);
 
-		lua_pop(ses->lua, 1);
+		lua_pop(L, 1);
 
 		*output = 0;
 
+		gtd->level->input--;
 		pop_call();
 		return;
 	}
 
-	result = lua_tostring(ses->lua, -1);
+	result = lua_tostring(L, -1);
 
 	if (result != NULL)
 	{
-		str_cpy(&output, result);
+		strcpy(output, result);
 	}
 	else
 	{
 		*output = 0;
 	}
 
-	lua_pop(ses->lua, 1);
+	lua_pop(L, 1);
 
+	gtd->level->input--;
 	pop_call();
 	return;
 }
@@ -324,6 +361,7 @@ void init_lua()
 
 	tt_api_init(L);
 	map_api_init(L);
+	screen_api_init(L);
 
 	lua_gc(L, LUA_GCRESTART, -1);
 }
@@ -371,31 +409,33 @@ int clear_lua_data(struct listnode *node)
 	return 1;
 }
 
-char *opt_luastring(lua_State *L, int n)
+char *opt_luastring(lua_State *L, int n, char *arg)
 {
 	const char *str;
-	char *arg;
 	size_t size;
 
 	str = lua_tolstring(L, n, &size);
-	arg = str_alloc_stack(size);
 
 	if (str)
 	{
-		str_cpy(&arg, str);
+		strcpy(arg, str);
+	}
+	else
+	{
+		arg[0] = 0;
 	}
 
 	return arg;
 }
 
-char *get_luastring(lua_State *L, int n)
+char *get_luastring(lua_State *L, int n, char *arg)
 {
 	const char *str;
-	char *arg;
+	size_t size;
 
-	str = luaL_checkstring(L, n);
-	arg = str_alloc_stack(0);
-	str_cpy(&arg, str);
+	str = luaL_checklstring(L, n, &size);
+
+	strcpy(arg, str);
 
 	return arg;
 }

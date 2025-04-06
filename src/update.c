@@ -913,7 +913,7 @@ void tick_update(void)
 
 					if (IS_LUA_NODE(node))
 					{
-						call_lua_function(ses, node, NULL, 0);
+						call_lua_function(ses, node, NULL, 0, FALSE);
 					}
 					else
 					{
@@ -963,7 +963,7 @@ void delay_update(void)
 
 				if (IS_LUA_NODE(node))
 				{
-					call_lua_function(ses, node, NULL, 0);
+					call_lua_function(ses, node, NULL, 0, FALSE);
 				}
 				else
 				{

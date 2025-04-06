@@ -1229,7 +1229,7 @@ int substitute(struct session *ses, char *string, char *result, int flags)
 
 					if (IS_LUA_NODE(node))
 					{
-						call_lua_substitute(ses, node, buf, gtd->vars, gtd->varc);
+						call_lua_substitute(ses, node, buf, gtd->vars, gtd->varc, TRUE);
 
 						pto += sprintf(pto, "%s", buf);
 					}

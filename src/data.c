@@ -914,7 +914,7 @@ int show_node_with_wild(struct session *ses, char *text, struct listroot *root)
 	{
 		node = root->list[index];
 
-		if (list_table[root->type].script_arg == 2)
+		if (list_table[root->type].script_arg == 2 && !IS_LUA_NODE(node))
 		{
 			if (list_table[root->type].args == 2)
 			{

@@ -106,9 +106,7 @@
 #endif
 
 #ifdef HAVE_LUA
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
+#include "lua.h"
 #endif
 
 #ifndef __TINTIN_H__
@@ -2407,12 +2405,12 @@ void init_lua();
 void register_lua_module(lua_State *L, const char *name, luaL_Reg *reg);
 void setup_lua_session(struct session *ses);
 void close_lua_session(struct session *ses);
-int call_lua_function(struct session *ses, struct listnode *node, char **args, int argc);
-void call_lua_substitute(struct session *ses, struct listnode *node, char *result, char **args, int argc);
+int call_lua_function(struct session *ses, struct listnode *node, char **args, int argc, int line);
+void call_lua_substitute(struct session *ses, struct listnode *node, char *result, char **args, int argc, int line);
 int copy_lua_reference(int ref);
 int clear_lua_data(struct listnode *node);
-char *opt_luastring(lua_State *L, int n);
-char *get_luastring(lua_State *L, int n);
+char *opt_luastring(lua_State *L, int n, char *arg);
+char *get_luastring(lua_State *L, int n, char *arg);
 
 #endif
 #endif

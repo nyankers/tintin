@@ -92,7 +92,7 @@ void check_all_actions(struct session *ses, char *original, char *line, char *bu
 
 			if (IS_LUA_NODE(node))
 			{
-				if (!call_lua_function(ses, node, gtd->vars, gtd->varc))
+				if (!call_lua_function(ses, node, gtd->vars, gtd->varc, TRUE))
 				{
 					continue;
 				}
@@ -162,7 +162,7 @@ void check_all_actions_multi(struct session *ses, char *original, char *stripped
 
 			if (IS_LUA_NODE(node))
 			{
-				call_lua_function(ses, node, gtd->vars, gtd->varc);
+				call_lua_function(ses, node, gtd->vars, gtd->varc, TRUE);
 			}
 			else
 			{
@@ -294,7 +294,7 @@ int check_all_aliases(struct session *ses, char *input)
 
 			if (IS_LUA_NODE(node))
 			{
-				call_lua_function(ses, node, gtd->vars, gtd->varc);
+				call_lua_function(ses, node, gtd->vars, gtd->varc, TRUE);
 				
 				sprintf(input, "");
 				pop_call();
@@ -469,7 +469,7 @@ void check_all_buttons(struct session *ses, short row, short col, char *arg1, ch
 
 			if (IS_LUA_NODE(node))
 			{
-				if (!call_lua_function(ses, node, gtd->vars, 6))
+				if (!call_lua_function(ses, node, gtd->vars, 6, FALSE))
 				{
 					continue;
 				}
@@ -907,7 +907,7 @@ int check_all_prompts(struct session *ses, char *original, char *line)
 		{
 			if (IS_LUA_NODE(node))
 			{
-				call_lua_substitute(ses, node, original, gtd->vars, gtd->varc);
+				call_lua_substitute(ses, node, original, gtd->vars, gtd->varc, TRUE);
 			}
 			else if (*node->arg2)
 			{
@@ -1048,7 +1048,7 @@ void check_all_substitutions(struct session *ses, char *original, char *line)
 
 				if (IS_LUA_NODE(node))
 				{
-					call_lua_substitute(ses, node, subst, gtd->vars, gtd->varc);
+					call_lua_substitute(ses, node, subst, gtd->vars, gtd->varc, TRUE);
 				}
 				else
 				{
@@ -1361,6 +1361,8 @@ DO_COMMAND(do_call)
 			RESTRING(gtd->vars[i], arg1);
 		}
 
+		show_debug(ses, LIST_PROCEDURE, COLOR_DEBUG "#DEBUG CALL " COLOR_BRACE "{" COLOR_STRING "%s" COLOR_BRACE "} {" COLOR_STRING "%s" COLOR_BRACE "}", node->arg1, gtd->vars[0]);
+
 		if (node->shots && --node->shots == 0)
 		{
 			delete_node_list(ses, LIST_PROCEDURE, node);
@@ -1368,13 +1370,11 @@ DO_COMMAND(do_call)
 
 		if (IS_LUA_NODE(node))
 		{
-			call_lua_function(ses, node, gtd->vars, gtd->varc);
+			call_lua_function(ses, node, gtd->vars, gtd->varc, TRUE);
 		}
 		else
 		{
-			substitute(ses, node->arg2, tmp, SUB_ARG);
-
-			substitute(ses, tmp, arg1, SUB_VAR|SUB_FUN|SUB_COL|SUB_ESC);
+			substitute(ses, node->arg2, arg1, SUB_ARG);
 			
 			script_driver(ses, LIST_PROCEDURE, arg1);
 		}

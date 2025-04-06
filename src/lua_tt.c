@@ -16,16 +16,19 @@ DO_LUA(tt_delay);
 DO_LUA(tt_echo);
 DO_LUA(tt_event);
 DO_LUA(tt_exec);
+DO_LUA(tt_format);
 DO_LUA(tt_fun);
 DO_LUA(tt_get);
-DO_LUA(tt_get_input);
 DO_LUA(tt_get_gag);
+DO_LUA(tt_get_input);
 DO_LUA(tt_history);
 DO_LUA(tt_ignore);
+DO_LUA(tt_insert_history);
 DO_LUA(tt_macro);
 DO_LUA(tt_parse);
 DO_LUA(tt_parse_list);
 DO_LUA(tt_print);
+DO_LUA(tt_print_raw);
 DO_LUA(tt_proc);
 DO_LUA(tt_prompt);
 DO_LUA(tt_quiet);
@@ -34,9 +37,12 @@ DO_LUA(tt_session);
 DO_LUA(tt_session_env);
 DO_LUA(tt_set);
 DO_LUA(tt_show);
+DO_LUA(tt_strip);
 DO_LUA(tt_sub);
 DO_LUA(tt_substitute);
 DO_LUA(tt_tick);
+DO_LUA(tt_time);
+DO_LUA(tt_unset);
 DO_LUA(tt_var);
 
 // closures
@@ -56,16 +62,19 @@ const luaL_Reg tt_api_reg[] = {
 	{ "echo", tt_echo },
 	{ "event", tt_event },
 	{ "exec", tt_exec },
+	{ "format", tt_format },
 	{ "fun", tt_fun },
 	{ "get", tt_get },
 	{ "get_input", tt_get_input },
 	{ "get_gag", tt_get_gag },
 	{ "history", tt_history },
 	{ "ignore", tt_ignore },
+	{ "insert_history", tt_insert_history },
 	{ "macro", tt_macro },
 	{ "parse", tt_parse },
 	{ "parse_list", tt_parse_list },
 	{ "print", tt_print },
+	{ "print_raw", tt_print_raw },
 	{ "proc", tt_proc },
 	{ "prompt", tt_prompt },
 	{ "quiet", tt_quiet },
@@ -74,9 +83,12 @@ const luaL_Reg tt_api_reg[] = {
 	{ "session_env", tt_session_env },
 	{ "set", tt_set },
 	{ "show", tt_show },
+	{ "strip", tt_strip },
 	{ "sub", tt_sub },
 	{ "substitute", tt_substitute },
 	{ "tick", tt_tick },
+	{ "time", tt_time },
+	{ "unset", tt_unset },
 	{ "var", tt_var },
 	{ NULL, NULL }
 };
@@ -155,20 +167,18 @@ int set_lua_data(lua_State *L, struct listnode *node)
 
 DO_LUA(tt_show)
 {
-	char *arg1, *arg2, *arg3;
-	char *out, *tmp;
+	char arg1[BUFFER_SIZE], arg2[BUFFER_SIZE], arg3[BUFFER_SIZE];
+	char out[BUFFER_SIZE], tmp[BUFFER_SIZE];
 	int prompt;
 
-	out = str_alloc_stack(0);
-	tmp = str_alloc_stack(0);
+	get_luastring(L, 1, arg1);
 
-	arg1 = get_luastring(L, 1);
 	substitute(gtd->lua_ses, arg1, tmp, SUB_COL);
 
 	prompt = is_suffix(arg1, "\\") && !is_suffix(arg1, "\\\\");
 
-	arg2 = opt_luastring(L, 2);
-	arg3 = opt_luastring(L, 3);
+	opt_luastring(L, 2, arg2);
+	opt_luastring(L, 3, arg3);
 
 	if (strchr(arg1, '\n'))
 	{
@@ -197,7 +207,7 @@ DO_LUA(tt_show)
 		return 0;
 	}
 
-	str_cpy_printf(&out, "%s%s%s", COLOR_TEXT, tmp, COLOR_TEXT);
+	snprintf(out, BUFFER_SIZE, "%s%s%s", COLOR_TEXT, tmp, COLOR_TEXT);
 
 	tintin_puts3(gtd->lua_ses, out, prompt);
 
@@ -206,15 +216,15 @@ DO_LUA(tt_show)
 
 DO_LUA(tt_print)
 {
-	char *arg1, *arg2, *arg3;
+	char arg1[BUFFER_SIZE], arg2[BUFFER_SIZE], arg3[BUFFER_SIZE];
 	int prompt;
 
-	arg1 = get_luastring(L, 1);
+	get_luastring(L, 1, arg1);
 
 	prompt = is_suffix(arg1, "\\") && !is_suffix(arg1, "\\\\");
 
-	arg2 = opt_luastring(L, 2);
-	arg3 = opt_luastring(L, 3);
+	opt_luastring(L, 2, arg2);
+	opt_luastring(L, 3, arg3);
 
 	if (*arg2)
 	{
@@ -228,22 +238,30 @@ DO_LUA(tt_print)
 	return 0;
 }
 
+DO_LUA(tt_print_raw)
+{
+	char arg1[BUFFER_SIZE];
+
+	get_luastring(L, 1, arg1);
+
+	print_stdout(0, 0, "%s", arg1);
+
+	return 0;
+}
+
 DO_LUA(tt_echo)
 {
-	char *arg1, *arg2, *arg3;
-	char *out, *tmp;
+	char arg1[BUFFER_SIZE], arg2[BUFFER_SIZE], arg3[BUFFER_SIZE];
+	char out[BUFFER_SIZE], tmp[BUFFER_SIZE];
 	int prompt;
 
-	out = str_alloc_stack(0);
-	tmp = str_alloc_stack(0);
-
-	arg1 = get_luastring(L, 1);
+	get_luastring(L, 1, arg1);
 	substitute(gtd->lua_ses, arg1, tmp, SUB_COL);
 
 	prompt = is_suffix(arg1, "\\") && !is_suffix(arg1, "\\\\");
 
-	arg2 = opt_luastring(L, 2);
-	arg3 = opt_luastring(L, 3);
+	opt_luastring(L, 2, arg2);
+	opt_luastring(L, 3, arg3);
 
 	if (*arg2)
 	{
@@ -252,20 +270,75 @@ DO_LUA(tt_echo)
 		return 0;
 	}
 
-	str_cpy_printf(&out, "%s%s%s", COLOR_TEXT, tmp, COLOR_TEXT);
+	snprintf(out, BUFFER_SIZE, "%s%s%s", COLOR_TEXT, tmp, COLOR_TEXT);
 
 	tintin_puts3(gtd->lua_ses, out, prompt);
 
 	return 0;
 }
 
-DO_LUA(tt_exec)
+DO_LUA(tt_format)
 {
-	char *cmd, *arg, *pto;
+	char format[BUFFER_SIZE], args[BUFFER_SIZE], arg[BUFFER_SIZE], result[BUFFER_SIZE];
+	char *pto;
 	int i, j, argc, size;
 
-	cmd = str_alloc_stack(0);
-	arg = str_alloc_stack(0);
+	argc = lua_gettop(L);
+
+	strcpy(format, luaL_checkstring(L, 1));
+	pto = args;
+
+	for (i = 2 ; i <= argc ; i++)
+	{
+		*(pto++) = ' ';
+		*(pto++) = '{';
+
+		if (lua_istable(L, i))
+		{
+			size = lua_objlen(L, i);
+			for (j = 1 ; j <= size ; j++)
+			{
+				*(pto++) = '{';
+
+				lua_rawgeti(L, i, j);
+				if (!lua_isstring(L, -1))
+				{
+					return luaL_argerror(L, i, "expected string or arrays of strings");
+				}
+
+				strcpy(arg, lua_tostring(L, -1));
+				lua_pop(L, 1);
+
+				pto += substitute(gtd->lua_ses, arg, pto, SUB_SEC);
+
+				*(pto++) = '}';
+			}
+		}
+		else if (lua_isstring(L, i))
+		{
+			strcpy(arg, lua_tostring(L, i));
+			pto += substitute(gtd->lua_ses, arg, pto, SUB_SEC);
+		}
+		else
+		{
+			return luaL_argerror(L, i, "expected string or arrays of strings");
+		}
+
+		*(pto++) = '}';
+	}
+	*pto = '\0';
+
+	format_string(gtd->lua_ses, format, args, result);
+	lua_pushstring(L, result);
+
+	return 1;
+}
+
+DO_LUA(tt_exec)
+{
+	char cmd[BUFFER_SIZE], arg[BUFFER_SIZE];
+	char *pto;
+	int i, j, argc, size;
 
 	argc = lua_gettop(L);
 
@@ -321,11 +394,12 @@ DO_LUA(tt_var)
 {
 	struct listroot *root;
 	struct listnode *node;
-	char *arg1, *arg2, name[BUFFER_SIZE], *str;
+	char arg1[BUFFER_SIZE], arg2[BUFFER_SIZE], name[BUFFER_SIZE];
+	char *str;
 
 	root = gtd->lua_ses->list[LIST_VARIABLE];
 
-	arg1 = get_luastring(L, 1);
+	get_luastring(L, 1, arg1);
 
 	if (lua_type(L, 2) == LUA_TBOOLEAN && !lua_toboolean(L, 2))
 	{
@@ -333,7 +407,7 @@ DO_LUA(tt_var)
 		return 1;
 	}
 
-	arg2 = opt_luastring(L, 2);
+	opt_luastring(L, 2, arg2);
 
 	if (!*arg2)
 	{
@@ -398,7 +472,7 @@ void check_var_path(lua_State *L, int argc)
 	}
 	else
 	{
-		for (i = 1 ; i < argc ; i++)
+		for (i = 1 ; i <= argc ; i++)
 		{
 			if (!lua_isstring(L, i))
 			{
@@ -408,17 +482,17 @@ void check_var_path(lua_State *L, int argc)
 	}
 }
 
-struct listnode *get_var_node(lua_State *L, int argc, int create)
+struct listnode *get_var_node(lua_State *L, int argc, int create, struct listroot **parent)
 {
-	struct listroot *root;
+	struct listroot *root, *cur_parent;
 	struct listnode *node = NULL;
-	char *name, *arg;
+	char *arg;
+	char buf[BUFFER_SIZE], name[BUFFER_SIZE];
 	const char *str;
 	int i, size;
 
-	root = gtd->lua_ses->list[LIST_VARIABLE];
-	arg = str_alloc_stack(0);
-	name = str_alloc_stack(0);
+	cur_parent = root = gtd->lua_ses->list[LIST_VARIABLE];
+	arg = buf;
 
 	if (argc == 1)
 	{
@@ -432,7 +506,7 @@ struct listnode *get_var_node(lua_State *L, int argc, int create)
 				str = lua_tostring(L, -1);
 				lua_pop(L, 1);
 
-				str_cpy(&name, str);
+				strcpy(name, str);
 
 				if (root == NULL)
 				{
@@ -448,6 +522,7 @@ struct listnode *get_var_node(lua_State *L, int argc, int create)
 					}
 				}
 
+				cur_parent = root;
 				node = search_node_list(root, name);
 
 				if (node == NULL)
@@ -472,7 +547,7 @@ struct listnode *get_var_node(lua_State *L, int argc, int create)
 					str = lua_tostring(L, -1);
 					lua_pop(L, 1);
 
-					str_cpy(&name, str);
+					strcpy(name, str);
 
 					node = update_node_list(root, name, "", "", "");
 				}
@@ -481,12 +556,13 @@ struct listnode *get_var_node(lua_State *L, int argc, int create)
 		else
 		{
 			str = lua_tostring(L, 1);
-			str_cpy(&arg, str);
+			strcpy(arg, str);
 
 			arg = get_arg_to_brackets(gtd->lua_ses, arg, name);
 
 			while (root && *arg)
 			{
+				cur_parent = root;
 				node = search_node_list(root, name);
 
 				if (node == NULL)
@@ -536,7 +612,7 @@ struct listnode *get_var_node(lua_State *L, int argc, int create)
 		for (i = 1 ; i <= argc ; i++)
 		{
 			str = lua_tostring(L, i);
-			str_cpy(&name, str);
+			strcpy(arg, str);
 
 			if (root == NULL)
 			{
@@ -552,7 +628,8 @@ struct listnode *get_var_node(lua_State *L, int argc, int create)
 				}
 			}
 
-			node = search_node_list(root, name);
+			cur_parent = root;
+			node = search_node_list(root, arg);
 
 			if (node == NULL)
 			{
@@ -564,20 +641,24 @@ struct listnode *get_var_node(lua_State *L, int argc, int create)
 
 		if (node == NULL && create)
 		{
-			node = update_node_list(root, name, "", "", "");
+			node = update_node_list(root, arg, "", "", "");
 
 			for ( i++ ; i <= argc ; i++ )
 			{
 				root = node->root = init_list(gtd->lua_ses, LIST_VARIABLE, LIST_SIZE);
 
 				str = lua_tostring(L, i);
-				str_cpy(&name, str);
+				strcpy(arg, str);
 
-				node = update_node_list(root, name, "", "", "");
+				node = update_node_list(root, arg, "", "", "");
 			}
 		}
 	}
 
+	if (parent != NULL)
+	{
+		*parent = cur_parent;
+	}
 	return node;
 }
 
@@ -605,6 +686,7 @@ void push_lua_var(lua_State *L, struct listnode *node, int convert_numbers)
 
 	while (TRUE)
 	{
+		child = NULL;
 		root = node->root;
 
 		for (i = prev ; i < root->used ; i++)
@@ -683,9 +765,35 @@ DO_LUA(tt_get)
 
 	check_var_path(L, argc);
 
-	node = get_var_node(L, argc, FALSE);
+	node = get_var_node(L, argc, FALSE, NULL);
 
 	push_lua_var(L, node, convert_numbers);
+
+	return 1;
+}
+
+DO_LUA(tt_unset)
+{
+	struct listroot *root;
+	struct listnode *node;
+	int argc, index;
+
+	argc = lua_gettop(L);
+
+	check_var_path(L, argc);
+
+	node = get_var_node(L, argc, FALSE, &root);
+
+	if (node != NULL)
+	{
+		index = search_index_list(root, node->arg1, NULL);
+		delete_index_list(root, index);
+		lua_pushboolean(L, TRUE);
+	}
+	else
+	{
+		lua_pushboolean(L, FALSE);
+	}
 
 	return 1;
 }
@@ -693,7 +801,7 @@ DO_LUA(tt_get)
 DO_LUA(tt_set)
 {
 	struct listnode *node;
-	char *arg1, *arg2;
+	char arg1[BUFFER_SIZE], arg2[BUFFER_SIZE];
 	int n, depth, max_depth = 0;
 
 	n = lua_gettop(L);
@@ -757,7 +865,7 @@ DO_LUA(tt_set)
 		return luaL_argerror(L, n, "expected string or simple table");
 	}
 
-	node = get_var_node(L, n-1, TRUE);
+	node = get_var_node(L, n-1, TRUE, NULL);
 
 	if (node->root)
 	{
@@ -768,14 +876,12 @@ DO_LUA(tt_set)
 
 	if (lua_isstring(L, n))
 	{
-		str_cpy(&node->arg2, lua_tostring(L, n));
+		node->arg2 = str_cpy(&node->arg2, lua_tostring(L, n));
 		return 0;
 	}
 
 	node->root = init_list(gtd->lua_ses, LIST_VARIABLE, LIST_SIZE);
-
-	arg1 = str_alloc_stack(0);
-	arg2 = str_alloc_stack(0);
+	*node->arg2 = 0;
 
 	depth = n;
 
@@ -793,8 +899,8 @@ DO_LUA(tt_set)
 			if (lua_isstring(L, -1))
 			{
 				lua_pushvalue(L, -2);
-				str_cpy(&arg1, lua_tostring(L, -1));
-				str_cpy(&arg2, lua_tostring(L, -2));
+				strcpy(arg1, lua_tostring(L, -1));
+				strcpy(arg2, lua_tostring(L, -2));
 				lua_pop(L, 2);
 
 				update_node_list(node->root, arg1, arg2, "", "");
@@ -802,7 +908,7 @@ DO_LUA(tt_set)
 			else if (lua_istable(L, -1))
 			{
 				lua_pushvalue(L, -2);
-				str_cpy(&arg1, lua_tostring(L, -1));
+				strcpy(arg1, lua_tostring(L, -1));
 				lua_pop(L, 1);
 
 				depth += 3;
@@ -828,18 +934,18 @@ int set_standard_node_lua(lua_State *L, int list)
 {
 	struct listroot *root;
 	struct listnode *node;
-	char *arg1, *arg2, *arg3;
+	char arg1[BUFFER_SIZE], arg2[BUFFER_SIZE], arg3[BUFFER_SIZE];
 	int shots, n, is_function;
 
 	root = gtd->lua_ses->list[list];
 
 	n = lua_gettop(L);
 
-	arg1 = get_luastring(L, 1);
+	get_luastring(L, 1, arg1);
 
 	if (n > 2)
 	{
-		arg3 = get_luastring(L, 2);
+		get_luastring(L, 2, arg3);
 
 		if (*arg3 && (atof(arg3) < 1 || atof(arg3) >= 10))
 		{
@@ -848,7 +954,7 @@ int set_standard_node_lua(lua_State *L, int list)
 	}
 	else
 	{
-		arg3 = "5";
+		strcpy(arg3, "5");
 	}
 
 	if (n > 3)
@@ -870,11 +976,11 @@ int set_standard_node_lua(lua_State *L, int list)
 
 	if (is_function)
 	{
-		arg2 = "";
+		strcpy(arg2, "");
 	}
 	else
 	{
-		arg2 = get_luastring(L, n);
+		get_luastring(L, n, arg2);
 	}
 
 	node = update_node_list(root, arg1, arg2, arg3, "");
@@ -905,16 +1011,14 @@ DO_LUA(tt_button)
 	struct listroot *root;
 	struct listnode *node;
 	const char *str;
-	char *arg, *arg1, *arg2, *arg3, *arg4;
+	char arg1[BUFFER_SIZE], arg2[BUFFER_SIZE], arg3[BUFFER_SIZE], arg4[BUFFER_SIZE];
+	char *arg;
 	int shots;
 	short pos[4];
 	int n, m, i, is_function;
 
 	root = gtd->lua_ses->list[LIST_BUTTON];
 	n = lua_gettop(L);
-
-	arg1 = str_alloc_stack(0);
-	arg2 = str_alloc_stack(0);
 
 	if (lua_isnumber(L, 1) && lua_isnumber(L, 2) && lua_isnumber(L, 3) && lua_isnumber(L, 4))
 	{
@@ -930,7 +1034,7 @@ DO_LUA(tt_button)
 	else if (lua_isstring(L, 1))
 	{
 		str = lua_tostring(L, 1);
-		str_cpy(&arg1, str);
+		strcpy(arg1, str);
 
 		arg = arg1;
 
@@ -958,7 +1062,7 @@ DO_LUA(tt_button)
 
 	if ((n - m) > 1)
 	{
-		arg3 = opt_luastring(L, m + 1);
+		opt_luastring(L, m + 1, arg3);
 
 		if (*arg3 && (atof(arg3) < 1 || atof(arg3) >= 10))
 		{
@@ -967,21 +1071,21 @@ DO_LUA(tt_button)
 	}
 	else
 	{
-		arg3 = "5";
+		strcpy(arg3, "5");
 	}
 
 	if ((n - m) > 2)
 	{
-		arg4 = opt_luastring(L, m + 2);
+		opt_luastring(L, m + 2, arg4);
 	}
 	else
 	{
-		arg4 = "";
+		strcpy(arg4, "");
 	}
 		
 	if (*arg4 == 0)
 	{
-		arg4 = "PRESSED MOUSE BUTTON ONE";
+		strcpy(arg4, "PRESSED MOUSE BUTTON ONE");
 	}
 
 	if ((n - m) > 3)
@@ -1002,12 +1106,12 @@ DO_LUA(tt_button)
 
 	if (is_function)
 	{
-		arg2 = "";
+		strcpy(arg2, "");
 	}
 	else
 	{
 		str = luaL_checkstring(L, n);
-		str_cpy(&arg2, str);
+		strcpy(arg2, str);
 	}
 
 	SET_BIT(gtd->event_flags, EVENT_FLAG_MOUSE);
@@ -1035,10 +1139,10 @@ DO_LUA(tt_event)
 {
 	struct listroot *root;
 	struct listnode *node;
-	char *arg1, *arg2;
+	char arg1[BUFFER_SIZE], arg2[BUFFER_SIZE];
 	int n, shots, index, is_function;
 
-	arg1 = get_luastring(L, 1);
+	get_luastring(L, 1, arg1);
 
 	for (index = 0 ; *event_table[index].name != 0 ; index++)
 	{
@@ -1066,11 +1170,11 @@ DO_LUA(tt_event)
 
 			if (is_function)
 			{
-				arg2 = "";
+				strcpy(arg2, "");
 			}
 			else
 			{
-				arg2 = get_luastring(L, n);
+				get_luastring(L, n, arg2);
 			}
 
 
@@ -1113,14 +1217,14 @@ DO_LUA(tt_prompt)
 {
 	struct listroot *root;
 	struct listnode *node;
-	char *arg1, *arg2, *arg3, *arg4;
+	char arg1[BUFFER_SIZE], arg2[BUFFER_SIZE], arg3[BUFFER_SIZE], arg4[BUFFER_SIZE];
 	int shots, n;
 	int is_function;
 
 	root = gtd->lua_ses->list[LIST_PROMPT];
 	n = lua_gettop(L);
 
-	arg1 = get_luastring(L, 1);
+	get_luastring(L, 1, arg1);
 
 	if (n > 2)
 	{
@@ -1128,11 +1232,11 @@ DO_LUA(tt_prompt)
 		{
 			luaL_argerror(L, 2, "expected number");
 		}
-		arg3 = opt_luastring(L, 2);
+		opt_luastring(L, 2, arg3);
 	}
 	else
 	{
-		arg3 = "";
+		strcpy(arg3, "");
 	}
 
 	if (n > 3)
@@ -1141,11 +1245,11 @@ DO_LUA(tt_prompt)
 		{
 			luaL_argerror(L, 3, "expected number");
 		}
-		arg4 = opt_luastring(L, 3);
+		opt_luastring(L, 3, arg4);
 	}
 	else
 	{
-		arg4 = "";
+		strcpy(arg4, "");
 	}
 
 	if (n > 4)
@@ -1165,11 +1269,11 @@ DO_LUA(tt_prompt)
 
 	if (is_function)
 	{
-		arg2 = "";
+		strcpy(arg2, "");
 	}
 	else
 	{
-		arg2 = get_luastring(L, n);
+		get_luastring(L, n, arg2);
 	}
 
 	node = update_node_list(root, arg1, arg2, arg3, arg4);
@@ -1189,14 +1293,14 @@ DO_LUA(tt_macro)
 {
 	struct listroot *root;
 	struct listnode *node;
-	char *arg1, *arg2, *arg3;
+	char arg1[BUFFER_SIZE], arg2[BUFFER_SIZE], arg3[BUFFER_SIZE];
 	int n, shots, is_function;
 
 	root = gtd->lua_ses->list[LIST_MACRO];
 
 	n = lua_gettop(L);
 
-	arg1 = get_luastring(L, 1);
+	get_luastring(L, 1, arg1);
 
 	if (n > 2)
 	{
@@ -1216,15 +1320,12 @@ DO_LUA(tt_macro)
 
 	if (is_function)
 	{
-		arg2 = "";
+		strcpy(arg2, "");
 	}
 	else
 	{
-		arg2 = get_luastring(L, n);
+		get_luastring(L, n, arg2);
 	}
-
-
-	arg3 = str_alloc_stack(0);
 
 	tintin_macro_compile(arg1, arg3);
 
@@ -1245,14 +1346,14 @@ DO_LUA(tt_proc)
 {
 	struct listroot *root;
 	struct listnode *node;
-	char *arg1, *arg2;
+	char arg1[BUFFER_SIZE], arg2[BUFFER_SIZE];
 	int n, shots, is_function;
 
 	root = gtd->lua_ses->list[LIST_PROCEDURE];
 
 	n = lua_gettop(L);
 
-	arg1 = get_luastring(L, 1);
+	get_luastring(L, 1, arg1);
 
 	if (n > 2)
 	{
@@ -1272,11 +1373,11 @@ DO_LUA(tt_proc)
 
 	if (is_function)
 	{
-		arg2 = "";
+		strcpy(arg2, "");
 	}
 	else
 	{
-		arg2 = get_luastring(L, n);
+		get_luastring(L, n, arg2);
 	}
 
 	node = update_node_list(root, arg1, arg2, "", "");
@@ -1296,14 +1397,14 @@ DO_LUA(tt_fun)
 {
 	struct listroot *root;
 	struct listnode *node;
-	char *arg1, *arg2;
+	char arg1[BUFFER_SIZE], arg2[BUFFER_SIZE];
 	int n, shots, is_function;
 
 	root = gtd->lua_ses->list[LIST_FUNCTION];
 
 	n = lua_gettop(L);
 
-	arg1 = get_luastring(L, 1);
+	get_luastring(L, 1, arg1);
 
 	if (n > 2)
 	{
@@ -1323,11 +1424,11 @@ DO_LUA(tt_fun)
 
 	if (is_function)
 	{
-		arg2 = "";
+		strcpy(arg2, "");
 	}
 	else
 	{
-		arg2 = get_luastring(L, n);
+		get_luastring(L, n, arg2);
 	}
 
 	node = update_node_list(root, arg1, arg2, "", "");
@@ -1347,7 +1448,7 @@ DO_LUA(tt_delay)
 {
 	struct listroot *root;
 	struct listnode *node;
-	char *arg1, *arg2;
+	char arg1[BUFFER_SIZE], arg2[BUFFER_SIZE];
 	int is_function;
 	double number;
 	char time[NUMBER_SIZE];
@@ -1355,7 +1456,7 @@ DO_LUA(tt_delay)
 	root = gtd->lua_ses->list[LIST_DELAY];
 
 	number = luaL_checknumber(L, 1);
-	arg1 = opt_luastring(L, 1);
+	opt_luastring(L, 1, arg1);
 
 	sprintf(time, "%llu.%010llu", gtd->utime + (unsigned long long) (number * 1000000), (unsigned long long) (number * 10000000000) % 10000000000);
 
@@ -1363,11 +1464,11 @@ DO_LUA(tt_delay)
 
 	if (is_function)
 	{
-		arg2 = "";
+		strcpy(arg2, "");
 	}
 	else
 	{
-		arg2 = get_luastring(L, 2);
+		get_luastring(L, 2, arg2);
 	}
 
 	node = create_node_list(root, time, arg2, arg1, "");
@@ -1385,7 +1486,7 @@ DO_LUA(tt_tick)
 {
 	struct listroot *root;
 	struct listnode *node;
-	char *arg1, *arg2, *arg3;
+	char arg1[BUFFER_SIZE], arg2[BUFFER_SIZE], arg3[BUFFER_SIZE];
 	char time[NUMBER_SIZE];
 	int n, shots, is_function;
 
@@ -1393,10 +1494,10 @@ DO_LUA(tt_tick)
 
 	n = lua_gettop(L);
 
-	arg1 = get_luastring(L, 1);
+	get_luastring(L, 1, arg1);
 
 	luaL_argcheck(L, lua_isnumber(L, 2), 2, "expected number");
-	arg3 = get_luastring(L, 2);
+	get_luastring(L, 2, arg3);
 	get_number_string(gtd->lua_ses, arg3, time);
 
 	if (n > 3)
@@ -1417,11 +1518,11 @@ DO_LUA(tt_tick)
 
 	if (is_function)
 	{
-		arg2 = "";
+		strcpy(arg2, "");
 	}
 	else
 	{
-		arg2 = get_luastring(L, n);
+		get_luastring(L, n, arg2);
 	}
 
 	node = update_node_list(root, arg1, arg2, time, arg3);
@@ -1894,11 +1995,11 @@ DO_LUA(tt_class)
 {
 	struct listnode *node;
 	struct listroot *root;
-	char *arg1;
+	char arg1[BUFFER_SIZE];
 	const char *str;
 	int list, i, j, count, size, convert_numbers;
 
-	arg1 = get_luastring(L, 1);
+	get_luastring(L, 1, arg1);
 
 	if (lua_isboolean(L, 2))
 	{
@@ -2008,7 +2109,7 @@ DO_LUA(tt_class)
 DO_LUA(read_lua_nodes)
 {
 	struct listroot *root;
-	char *arg1;
+	char arg1[BUFFER_SIZE];
 	int list, i, index, convert_numbers;
 
 	list = lua_tointeger(L, lua_upvalueindex(1));
@@ -2016,12 +2117,12 @@ DO_LUA(read_lua_nodes)
 
 	if (lua_isboolean(L, 1))
 	{
-		arg1 = "";
+		strcpy(arg1, "");
 		convert_numbers = lua_toboolean(L, 1);
 	}
 	else
 	{
-		arg1 = opt_luastring(L, 1);
+		opt_luastring(L, 1, arg1);
 
 		if (lua_isboolean(L, 2))
 		{
@@ -2192,14 +2293,26 @@ DO_LUA(tt_history)
 	}
 }
 
+DO_LUA(tt_insert_history)
+{
+	char arg1[BUFFER_SIZE];
+
+	get_luastring(L, 1, arg1);
+
+	add_line_history(gtd->lua_ses, arg1);
+
+	return 0;
+}
+
 DO_LUA(tt_parse)
 {
 	struct session *ses = gtd->lua_ses;
-	char *arg, *arg1, *tmp;
+	char arg1[BUFFER_SIZE], tmp[BUFFER_SIZE], buf[BUFFER_SIZE];
+	char *arg;
 	int first, depth, max_depth, convert_numbers;
 
-	arg = get_luastring(L, 1);
-	arg1 = str_alloc_stack(0);
+	get_luastring(L, 1, buf);
+	arg = buf;
 
 	convert_numbers = !lua_isboolean(L, 2) || lua_toboolean(L, 2);
 
@@ -2214,8 +2327,6 @@ DO_LUA(tt_parse)
 		push_lua_string_or_number(L, arg1, convert_numbers);
 		return 1;
 	}
-
-	tmp  = str_alloc_stack(0);
 
 	lua_newtable(L);
 
@@ -2265,7 +2376,7 @@ DO_LUA(tt_parse)
 
 			lua_pushlightuserdata(L, arg);
 
-			arg = arg1;
+			arg = tmp;
 
 			depth += 3;
 
@@ -2285,11 +2396,12 @@ DO_LUA(tt_parse)
 DO_LUA(tt_parse_list)
 {
 	struct session *ses = gtd->lua_ses;
-	char *arg, *arg1;
+	char arg1[BUFFER_SIZE], tmp[BUFFER_SIZE];
+	char *arg;
 	int n = 0, convert_numbers;
 
-	arg = get_luastring(L, 1);
-	arg1 = str_alloc_stack(0);
+	get_luastring(L, 1, tmp);
+	arg = tmp;
 
 	convert_numbers = !lua_isboolean(L, 2) || lua_toboolean(L, 2);
 
@@ -2298,14 +2410,19 @@ DO_LUA(tt_parse_list)
 	while (*arg)
 	{
 		arg = get_arg_in_braces(ses, arg, arg1, GET_ONE);
-		push_lua_string_or_number(L, arg, convert_numbers);
+		push_lua_string_or_number(L, arg1, convert_numbers);
 		lua_rawseti(L, -2, ++n);
+
+		if (*arg == COMMAND_SEPARATOR)
+		{
+			arg++;
+		}
 	}
 
 	return 1;
 }
 
-int call_lua_function_adjust_flag(lua_State *L, int *flag)
+int call_lua_function_adjust_flag(lua_State *L, unsigned int *flag)
 {
 	luaL_argcheck(L, lua_isfunction(L, 1) || lua_isstring(L, 1), 1, "expected function or string");
 
@@ -2365,9 +2482,9 @@ DO_LUA(tt_get_gag)
 DO_LUA(tt_session)
 {
 	struct session *prev, *next;
-	char *arg1;
+	char arg1[BUFFER_SIZE];
 
-	arg1 = get_luastring(L, 1);
+	get_luastring(L, 1, arg1);
 
 	prev = gtd->lua_ses;
 
@@ -2391,9 +2508,9 @@ DO_LUA(tt_session)
 DO_LUA(tt_session_env)
 {
 	struct session *ses;
-	char *arg1;
+	char arg1[BUFFER_SIZE];
 
-	arg1 = get_luastring(L, 1);
+	get_luastring(L, 1, arg1);
 
 	ses = find_session(arg1);
 
@@ -2408,13 +2525,25 @@ DO_LUA(tt_session_env)
 	return 1;
 }
 
+DO_LUA(tt_strip)
+{
+	char arg1[BUFFER_SIZE], arg2[BUFFER_SIZE];
+
+	get_luastring(L, 1, arg1);
+
+	strip_vt102_codes(arg1, arg2);
+
+	lua_pushstring(L, arg2);
+
+	return 1;
+}
+
 DO_LUA(tt_substitute)
 {
-	char *arg, *buf;
+	char arg[BUFFER_SIZE], buf[BUFFER_SIZE];
 	int flags = 0;
 
-	arg = get_luastring(L, 1);
-	buf = str_alloc_stack(0);
+	get_luastring(L, 1, arg);
 
 	flags = luaL_optint(L, 2, SUB_SEC) & substitute_flag_mask;
 
@@ -2427,11 +2556,9 @@ DO_LUA(tt_substitute)
 
 DO_LUA(tt_color)
 {
-	char *arg, *result;
+	char arg[BUFFER_SIZE], result[BUFFER_SIZE];
 
-	arg = get_luastring(L, 1);
-
-	result = str_alloc_stack(0);
+	get_luastring(L, 1, arg);
 
 	substitute(gtd->lua_ses, arg, result, SUB_COL);
 
@@ -2508,6 +2635,20 @@ void prepare_lua_vars(lua_State *L, int n, int argc, char **vars, int *varc)
 			*vars[i] = 0;
 		}
 	}
+}
+
+DO_LUA(tt_time)
+{
+	struct timeval now_time;
+	double time;
+
+	gettimeofday(&now_time, NULL);
+
+	time = (double) now_time.tv_sec + ((double) now_time.tv_usec) / 1000000.0;
+
+	lua_pushnumber(L, time);
+	
+	return 1;
 }
 
 #endif

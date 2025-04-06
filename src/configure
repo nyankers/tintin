@@ -635,6 +635,8 @@ LDFLAGS
 CFLAGS
 CC
 LUA
+LUA_LIBS
+LUA_INCLUDE
 LUA_OBJS
 BIG5
 mybindir
@@ -659,7 +661,6 @@ infodir
 docdir
 oldincludedir
 includedir
-runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -684,6 +685,7 @@ ac_user_opts='
 enable_option_checking
 enable_big5
 with_lua
+with_luajit
 '
       ac_precious_vars='build_alias
 host_alias
@@ -733,7 +735,6 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
-runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -986,15 +987,6 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
-  -runstatedir | --runstatedir | --runstatedi | --runstated \
-  | --runstate | --runstat | --runsta | --runst | --runs \
-  | --run | --ru | --r)
-    ac_prev=runstatedir ;;
-  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
-  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
-  | --run=* | --ru=* | --r=*)
-    runstatedir=$ac_optarg ;;
-
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1132,7 +1124,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir runstatedir
+		libdir localedir mandir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1285,7 +1277,6 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
-  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1319,6 +1310,7 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --without-lua           disable Lua support even if present
+  --with-luajit           enable LuaJIT2.1 specifically
 
 Some influential environment variables:
   LUA         specify the Lua library to use, e.g. luajit, defaults to lua
@@ -2179,6 +2171,8 @@ $as_echo "Configuring TinTin++" >&6; }
 
 
 
+
+
 if  test $bindir != "\${exec_prefix}/bin"
 then
 	mybindir="$bindir"
@@ -2213,18 +2207,43 @@ if test "${with_lua+set}" = set; then :
 fi
 
 
+# Check whether --with-luajit was given.
+if test "${with_luajit+set}" = set; then :
+  withval=$with_luajit;
+fi
 
+
+
+
+if  test "x$with_luajit" = "xyes" ; then :
+
+		with_lua="yes"
+		if  test "x$LUA" = "x" ; then :
+  LUA="luajit-5.1"
+
+fi
+		if  test "x$LUA_PATH" = "x" ; then :
+  LUA_PATH="luajit-2.1/"
+
+fi
+
+
+fi
 
 if  test "x$with_lua" != "xno" ; then :
   if  test "x$LUA" = "x" ; then :
   LUA="lua"
 else
   with_lua="yes"
+		if  test "x$LUA_PATH" = "x" ; then :
+  LUA_PATH="${LUA}/"
+
+fi
 
 fi
 else
   if  test "x$LUA" != "x" ; then :
-  LUA="",
+  LUA=""
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: gave --without-lua with LUA defined" >&5
 $as_echo "$as_me: WARNING: gave --without-lua with LUA defined" >&2;}
 
@@ -3519,12 +3538,13 @@ done
 if  test "x$with_lua" != "xno" ; then :
 
 	have_lua="yes"
-	for ac_header in lua.h
+	for ac_header in ${LUA_PATH}lua.h
 do :
-  ac_fn_c_check_header_mongrel "$LINENO" "lua.h" "ac_cv_header_lua_h" "$ac_includes_default"
-if test "x$ac_cv_header_lua_h" = xyes; then :
+  as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
+ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
+if eval test \"x\$"$as_ac_Header"\" = x"yes"; then :
   cat >>confdefs.h <<_ACEOF
-#define HAVE_LUA_H 1
+#define `$as_echo "HAVE_$ac_header" | $as_tr_cpp` 1
 _ACEOF
 
 else
@@ -3534,12 +3554,13 @@ fi
 
 done
 
-	for ac_header in lauxlib.h
+	for ac_header in ${LUA_PATH}lauxlib.h
 do :
-  ac_fn_c_check_header_mongrel "$LINENO" "lauxlib.h" "ac_cv_header_lauxlib_h" "$ac_includes_default"
-if test "x$ac_cv_header_lauxlib_h" = xyes; then :
+  as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
+ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
+if eval test \"x\$"$as_ac_Header"\" = x"yes"; then :
   cat >>confdefs.h <<_ACEOF
-#define HAVE_LAUXLIB_H 1
+#define `$as_echo "HAVE_$ac_header" | $as_tr_cpp` 1
 _ACEOF
 
 else
@@ -3549,12 +3570,13 @@ fi
 
 done
 
-	for ac_header in lualib.h
+	for ac_header in ${LUA_PATH}lualib.h
 do :
-  ac_fn_c_check_header_mongrel "$LINENO" "lualib.h" "ac_cv_header_lualib_h" "$ac_includes_default"
-if test "x$ac_cv_header_lualib_h" = xyes; then :
+  as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
+ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
+if eval test \"x\$"$as_ac_Header"\" = x"yes"; then :
   cat >>confdefs.h <<_ACEOF
-#define HAVE_LUALIB_H 1
+#define `$as_echo "HAVE_$ac_header" | $as_tr_cpp` 1
 _ACEOF
 
 else
@@ -3566,7 +3588,6 @@ done
 
 
 fi
-
 
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -4697,7 +4718,7 @@ _ACEOF
 fi
 
 
-if  test "x$have_lua" == "xyes" ; then :
+if  test "x$have_lua" = "xyes" ; then :
   as_ac_Lib=`$as_echo "ac_cv_lib_$LUA''_lua_setfenv" | $as_tr_sh`
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for lua_setfenv in -l$LUA" >&5
 $as_echo_n "checking for lua_setfenv in -l$LUA... " >&6; }
@@ -4753,10 +4774,15 @@ fi
 
 if  test "x$have_lua" = "xyes" ; then :
 
-		LUA_OBJS="lua_tt.o lua_map.o"
+		LUA_OBJS="lua_tt.o lua_map.o lua_screen.o"
 
 $as_echo "#define HAVE_LUA /**/" >>confdefs.h
 
+		cat >lua.h <<END
+#include <${LUA_PATH}lua.h>
+#include <${LUA_PATH}lauxlib.h>
+#include <${LUA_PATH}lualib.h>
+END
 
 else
   if  test "x$with_lua" = "xyes"; then :
@@ -6328,6 +6354,7 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
+
 
 
 echo

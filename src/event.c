@@ -285,7 +285,7 @@ int check_all_events(struct session *ses, int flags, int args, int vars, char *f
 
 				if (IS_LUA_NODE(node))
 				{
-					call_lua_function(ses_ptr, node, gtd->vars, vars);
+					call_lua_function(ses_ptr, node, gtd->vars, vars, FALSE);
 				}
 				else
 				{

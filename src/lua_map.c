@@ -220,7 +220,7 @@ DO_LUA(map_api_check_room)
 DO_LUA(map_api_at)
 {
 	struct session *ses;
-	char *arg1, *arg2;
+	char arg1[BUFFER_SIZE], arg2[BUFFER_SIZE];
 	int new_room;
 
 	check_in_map_lua(L);
@@ -234,7 +234,7 @@ DO_LUA(map_api_at)
 		return luaL_error(L, "can't nest map.at() calls");
 	}
 
-	arg1 = get_luastring(L, 1);
+	get_luastring(L, 1, arg1);
 	new_room = find_room(ses, arg1);
 
 	ses->map->at_room = ses->map->in_room;
@@ -261,7 +261,7 @@ DO_LUA(map_api_at)
 	}
 	else if (lua_isstring(L, 1))
 	{
-		arg2 = get_luastring(L, 2);
+		get_luastring(L, 2, arg2);
 
 		script_driver(ses, LIST_COMMAND, arg2);
 	}
@@ -280,10 +280,10 @@ DO_LUA(map_api_at)
 
 struct exit_data *get_lua_exit(lua_State *L)
 {
-	char *arg1;
+	char arg1[BUFFER_SIZE];
 	int vnum;
 
-	arg1 = get_luastring(L, 1);
+	get_luastring(L, 1, arg1);
 
 	vnum = get_in_room_lua(L, 2);
 
@@ -292,7 +292,7 @@ struct exit_data *get_lua_exit(lua_State *L)
 
 DO_LUA(map_api_check_exit)
 {
-	char *arg1;
+	char arg1[BUFFER_SIZE];
 	int vnum;
 
 	check_in_map_lua(L);
@@ -317,7 +317,7 @@ DO_LUA(map_api_check_exit)
 		}
 	}
 
-	arg1 = get_luastring(L, 1);
+	get_luastring(L, 1, arg1);
 
 	lua_pushboolean(L, find_exit(gtd->lua_ses, vnum, arg1) != NULL);
 
@@ -544,11 +544,9 @@ void compile_lua_search(lua_State *L, int n, struct session *ses)
 {
 	struct search_data *search = ses->map->search;
 	struct listnode *node;
-	char *arg1;
+	char arg1[BUFFER_SIZE];
 
 	luaL_argcheck(L, lua_isnoneornil(L, n) || lua_istable(L, n) || lua_isstring(L, n), n, "expected optional string or table");
-
-	arg1 = str_alloc_stack(0);
 
 	search->vnum = search->min = search->max = 0;
 
@@ -846,7 +844,11 @@ DO_LUA(map_api_get_all)
 
 	room = gtd->lua_ses->map->room_list[vnum];
 
-	lua_createtable(L, 0, 12);
+	lua_createtable(L, 0, 13);
+
+	lua_pushliteral(L, "area");
+	lua_pushstring(L, room->area);
+	lua_rawset(L, -3);
 
 	lua_pushliteral(L, "color");
 	lua_pushstring(L, room->color);

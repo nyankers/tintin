@@ -468,7 +468,7 @@ int check_key(char *input, int len)
 
 					if (IS_LUA_NODE(node))
 					{
-						call_lua_function(gtd->ses, node, NULL, 0);
+						call_lua_function(gtd->ses, node, NULL, 0, FALSE);
 					}
 					else
 					{
